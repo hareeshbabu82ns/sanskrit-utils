@@ -1,0 +1,12 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Databases
+*.sqlite3
+
+# Packaging
+sanskrit_utils.egg-info/
+build/
+dist/
+venv
