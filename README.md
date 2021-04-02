@@ -39,14 +39,23 @@ $> python -m flask run
 ```
 
 #### Building and Running Docker
+* Development mode
+```sh
+$> docker build -f Dockerfile.dev --tag sanskrit-utils .
+$> docker run -d -p 5000:5000 --name sanskrit-utils sanskrit-utils
+```
+
+* Production mode
 ```sh
 $> docker build --tag sanskrit-utils .
 $> docker tag sanskrit-utils:latest sanskrit-utils:v1.0.0
 $> docker rmi sanskrit-utils:v1.0.0
-$> docker run -d -p 5000:5000 --name sanskrit-utils sanskrit-utils
+$> docker run -d -p 5000:80 --name sanskrit-utils sanskrit-utils
 
 $> docker image prune -a
+$> docker exec -it sanskrit-utils /bin/bash
+$> docker logs -f sanskrit-utils
 
 # after the CI build, deploy docker image
-$> docker run -d -p 5000:5000 --name sanskrit-utils docker.terabits.io/home/sanskrit-utils:latest
+$> docker run -d --restart on-failure -p 5000:80 --name sanskrit-utils docker.terabits.io/home/sanskrit-utils:latest
 ```

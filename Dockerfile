@@ -1,10 +1,17 @@
-FROM python:3.8-slim-buster
+FROM python:3.6-slim
 
-WORKDIR /app
+RUN apt-get clean \
+  && apt-get -y update
 
-COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN apt-get -y install nginx \
+  && apt-get -y install python3-dev \
+  && apt-get -y install build-essential
 
-COPY . .
+COPY . /srv/app
+WORKDIR /srv/app
 
-CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
+RUN pip install -r requirements.txt --src /usr/local/src
+
+COPY nginx.conf /etc/nginx
+RUN chmod +x ./start.sh
+CMD ["./start.sh"]

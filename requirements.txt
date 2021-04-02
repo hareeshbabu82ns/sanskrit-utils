@@ -5,3 +5,4 @@ Flask-SQLAlchemy==2.5.1
 graphene==2.1.8
 graphene-sqlalchemy==2.3.0
 SQLAlchemy==1.4.4
+uWSGI==2.0.19.1
