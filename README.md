@@ -46,4 +46,7 @@ $> docker rmi sanskrit-utils:v1.0.0
 $> docker run -d -p 5000:5000 --name sanskrit-utils sanskrit-utils
 
 $> docker image prune -a
+
+# after the CI build, deploy docker image
+$> docker run -d -p 5000:5000 --name sanskrit-utils docker.terabits.io/home/sanskrit-utils:latest
 ```
