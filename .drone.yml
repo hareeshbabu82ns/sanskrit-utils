@@ -18,8 +18,9 @@ steps:
       from_secret: server_domain
   commands:
     - docker login -p $DPASS -u $DUSER docker.$SERVER_DOMAIN
-    - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils:latest -f Dockerfile .
+    # - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils:latest -f Dockerfile .
     - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils:latest
+    - docker run -d --restart on-failure -p 5000:80 --name sanskrit-utils docker.$SERVER_DOMAIN/home/sanskrit-utils:latest
   # when:
   #   branch:
   #   - docker
@@ -31,7 +32,8 @@ steps:
     channel: pipelines
     webhook:
       from_secret: pipeline_notifier
-    icon_url: https://unsplash.it/48/48/?random
+    icon_emoji: ":rocket:"
+    # icon_url: https://unsplash.it/48/48/?random
     # image_url: https://unsplash.it/256/256/?random
     template: >
       {{#if build.pull }}
