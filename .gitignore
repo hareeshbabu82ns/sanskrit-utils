@@ -10,3 +10,5 @@ sanskrit_utils.egg-info/
 build/
 dist/
 venv
+
+vault.pass

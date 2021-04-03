@@ -1,0 +1,19 @@
+version: "3.2"
+services:
+
+  {{app_name}}:
+    container_name: {{app_name}}
+    image: {{app_image_name}}:{{app_image_version}}
+    env_file:
+      - "{{ app_templates_dir }}/current.env"
+    volumes:
+      - "{{app_data_dir}}:/data:rw"
+    ports:
+      - '{{port_http}}:{{app_port}}/tcp'
+    networks:
+      - "{{docker_network}}"
+    restart: unless-stopped
+
+networks:
+  "{{docker_network}}":
+     external: true

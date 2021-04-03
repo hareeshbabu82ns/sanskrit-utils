@@ -1,0 +1,9 @@
+ssh_user: "{{ vault_ssh_user }}"
+# ssh_pass: "{{ vault_ssh_pass }}"
+
+docker_network: "proxynet"
+tmp_dir: "/tmp"
+appdata_dir: "/mnt/user/appdata"
+
+docker_domain: "docker"
+server_domain: "{{vault_server_domain}}"
