@@ -19,11 +19,28 @@ steps:
   commands:
     - docker login -p $DPASS -u $DUSER docker.$SERVER_DOMAIN
     # - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils:latest -f Dockerfile .
-    - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils:latest
-    - docker run -d --restart on-failure -p 5000:80 --name sanskrit-utils docker.$SERVER_DOMAIN/home/sanskrit-utils:latest
+    # - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils:latest
+    # - docker run -d --restart on-failure -p 5000:80 --name sanskrit-utils docker.$SERVER_DOMAIN/home/sanskrit-utils:latest
   # when:
   #   branch:
   #   - docker
+
+# Deploy app using ansible
+- name: apply ansible playbook
+  image: plugins/ansible:1
+  environment:
+    ansible_vault_pass:
+      from_secret: ansible_vault_pass
+    another_var: foo
+  settings:
+    playbook: .ansible/playbook.yml
+    # galaxy: .ansible/requirements.yml
+    inventory: .ansible/inventory
+    private_key:
+      from_secret: unraid_ssh_key
+    vault_password:
+      from_secret: ansible_vault_pass
+
 
 # Finally common tasks for all steps
 - name: notify
