@@ -32,7 +32,7 @@ $> python api_test.py
 #### Building and Running locally
 ```sh
 $> PYTHONPATH=. python setup.py install
-$> python run.py
+$> python app.py
 
 # run using flask module
 $> python -m flask run
@@ -51,6 +51,7 @@ $> docker build --tag sanskrit-utils .
 $> docker tag sanskrit-utils:latest sanskrit-utils:v1.0.0
 $> docker rmi sanskrit-utils:v1.0.0
 $> docker run -d -p 5000:80 --name sanskrit-utils sanskrit-utils
+$> docker rm -f sanskrit-utils
 
 $> docker image prune -a
 $> docker exec -it sanskrit-utils /bin/bash
