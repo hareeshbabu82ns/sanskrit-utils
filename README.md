@@ -60,3 +60,16 @@ $> docker logs -f sanskrit-utils
 # after the CI build, deploy docker image
 $> docker run -d --restart on-failure -p 5000:80 --name sanskrit-utils docker.terabits.io/home/sanskrit-utils:latest
 ```
+
+#### Converting Dictionaries
+```sh
+$> MONGO_DB_PASSWORD=pwd  \
+    MONGO_DB_HOST=192.168.0.10  \
+    MONGO_DB_PORT=3333  \
+    python sanskrit_utils/loaders/SanDicDhatuPataToMongodb.py 
+
+$> MONGO_DB_PASSWORD=pwd  \
+    MONGO_DB_HOST=192.168.0.10  \
+    MONGO_DB_PORT=3333  \
+    python sanskrit_utils/loaders/LexiconDicToMongodb.py
+```
