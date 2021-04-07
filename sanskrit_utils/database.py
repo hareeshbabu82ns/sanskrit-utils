@@ -16,7 +16,7 @@ mdbPassword = os.environ.get('MONGO_DB_PASSWORD', '')
 mdbUrl = f'mongodb://{mdbUser}:{mdbPassword}@{mdbHost}:{mdbPort}/{mdbDB}'
 print('MongoDB connecting to:', mdbUrl)
 
-mongodbClient = pymongo.MongoClient(mdbUrl)
+mongodbClient = pymongo.MongoClient(mdbUrl, connect=False)
 
 dbConnection = mongodbClient[mdbDB]
 

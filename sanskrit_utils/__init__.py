@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 
 from flask import Flask
 from sanskrit_utils.schema import schema
+from .database import dbConnection
 
 app = Flask(__name__)
 # app.debug = True
@@ -22,6 +23,7 @@ def graphql_server():
     context = {
         'request': request,
         'apiVersion': 'v1.0',
+        'dbConnection': dbConnection,
         'extras': 'some data'
     }
 

@@ -53,7 +53,11 @@ $> docker run -d -p 5000:5000 --name sanskrit-utils sanskrit-utils
 $> docker build --tag sanskrit-utils .
 $> docker tag sanskrit-utils:latest sanskrit-utils:v1.0.0
 $> docker rmi sanskrit-utils:v1.0.0
-$> docker run -d -p 5000:80 --name sanskrit-utils sanskrit-utils
+$> docker run -d -p 5000:80 \
+    -e MONGO_DB_PASSWORD= \
+    -e MONGO_DB_HOST= \
+    -e MONGO_DB_PORT= \
+    --name sanskrit-utils sanskrit-utils
 $> docker rm -f sanskrit-utils
 
 $> docker image prune -a

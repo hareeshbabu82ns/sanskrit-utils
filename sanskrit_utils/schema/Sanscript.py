@@ -1,10 +1,12 @@
 import enum
+import pymongo
 from ariadne import EnumType
 from sanskrit_utils.schema import query
 from indic_transliteration import sanscript
 from indic_transliteration.sanscript import SchemeMap, SCHEMES, transliterate
 
 from sanskrit_utils.database import dictEntriesCollection
+# from sanskrit_utils.database import mongodbClient, mdbDB
 
 # sanscriptSchemesEnum = EnumType("SanscriptScheme",{
 #   "DEVANAGARI" : sanscript.DEVANAGARI,
@@ -39,8 +41,6 @@ class Dictionaries(enum.Enum):
 
 
 dictionaryEnum = EnumType("Dictionary", Dictionaries)
-
-# Map resolvers to fields in Query type using decorator syntax...
 
 
 @query.field("transliterate")
