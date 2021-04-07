@@ -7,6 +7,53 @@ extend type Query {
       schemeFrom: SanscriptScheme
       schemeTo: SanscriptScheme
     ): String!
+
+	dictionaryKeySearch(
+		search: String!
+		origin: [Dictionary!]
+	):[DictionaryKey!]
+
+	dictionaryFuzzySearch(
+		search: String!
+		origin: [Dictionary!]
+	):[DictionaryItem!]	
+}
+
+type DictionaryItem{
+	key: String!
+	description: String
+	origin: Dictionary!
+}
+
+type DictionaryKey{
+	key: String!
+	origin: Dictionary!
+}
+
+"""
+Sanskript Transliterate Schemes
+"""
+enum Dictionary{
+	"""
+	Vacaspatyam
+	"""
+	VCP
+	"""
+	Dhatu Pata
+	"""
+	DHATU_PATA
+	"""
+	Monier-Williams
+	"""
+	MW
+	"""
+	Monier-Williams English
+	"""
+	MWE
+	"""
+	Sabda-kalpadruma
+	"""
+	SKD
 }
 
 """

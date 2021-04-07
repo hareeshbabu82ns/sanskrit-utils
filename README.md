@@ -35,7 +35,10 @@ $> PYTHONPATH=. python setup.py install
 $> python app.py
 
 # run using flask module
-$> python -m flask run
+$> MONGO_DB_PASSWORD=pwd  \
+    MONGO_DB_HOST=192.168.0.10  \
+    MONGO_DB_PORT=3333  \
+    python -m flask run
 ```
 
 #### Building and Running Docker
@@ -72,6 +75,25 @@ $> MONGO_DB_PASSWORD=pwd  \
     MONGO_DB_HOST=192.168.0.10  \
     MONGO_DB_PORT=3333  \
     python sanskrit_utils/loaders/LexiconDicToMongodb.py
+```
+
+#### API
+* convert text between schemes
+```graphql
+{
+  transliterate(text:"harIS",schemeFrom:SLP1,schemeTo:DEVANAGARI)
+}
+```
+
+* dictionary full text (fuzzy) search
+```graphql
+{
+    dictionaryFuzzySearch(search:"rama",origin:[DHATU_PATA]){
+        key
+        description
+        origin
+    }
+}
 ```
 
 #### Issues
