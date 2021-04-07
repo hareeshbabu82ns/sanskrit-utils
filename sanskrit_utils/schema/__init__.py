@@ -1,15 +1,13 @@
-import graphene
+from ariadne import gql, load_schema_from_path, make_executable_schema
+from ariadne import ObjectType
+import flask
 
-from graphene_sqlalchemy import SQLAlchemyConnectionField
-from sanskrit_utils.schema.User import Query as UserQuery, Mutations as UserMutations
+from .Query import query
+from .Mutation import mutation
+from .User import user
 
+type_defs = load_schema_from_path("sanskrit_utils/schema")
 
-class Query(UserQuery, graphene.ObjectType):
-    pass
+type_resolvers = [query, mutation, user]
 
-
-class Mutations(UserMutations, graphene.ObjectType):
-    pass
-
-
-schema = graphene.Schema(query=Query, mutation=Mutations)
+schema = make_executable_schema(type_defs, type_resolvers)

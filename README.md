@@ -73,3 +73,7 @@ $> MONGO_DB_PASSWORD=pwd  \
     MONGO_DB_PORT=3333  \
     python sanskrit_utils/loaders/LexiconDicToMongodb.py
 ```
+
+#### Issues
+* GitHub web hook `undelevered` error to reach `Drone`
+    * update the web hook settings in GitHub to point to `https://domain/github_hook`

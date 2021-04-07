@@ -1,52 +1,9 @@
-import graphene
+from ariadne import ObjectType
+from sanskrit_utils.schema import query
 
-from graphene import relay
-from graphene_sqlalchemy import SQLAlchemyObjectType, SQLAlchemyConnectionField
-from sanskrit_utils.database import db_session
-from sanskrit_utils.models.User import User as UserModel
+user = ObjectType("User")
 
-
-class UserAttributes:
-    firstName = graphene.String()
-    lastName = graphene.String()
-    email = graphene.String()
-    password = graphene.String()
-
-
-class User(SQLAlchemyObjectType):
-    class Meta:
-        model = UserModel
-        interfaces = (relay.Node, )
-
-
-class Query(graphene.ObjectType):
-    node = graphene.relay.Node.Field()
-
-    # User Query
-    user = graphene.relay.Node.Field(User)
-    users = SQLAlchemyConnectionField(User)
-
-
-class UserInput(graphene.InputObjectType, UserAttributes):
-    pass
-
-
-class CreateUser(graphene.Mutation):
-    ok = graphene.Boolean()
-    user = graphene.Field(lambda: User)
-
-    class Arguments:
-        input = UserInput(required=True)
-
-    def mutate(self, info, user):
-        user = UserModel(**input)
-
-        db_session.add(user)
-        db_session.commit()
-        ok = True
-
-        return CreateUser(user=user, ok=ok)
-
-
-class Mutations(graphene.ObjectType):
-    create_user = CreateUser.Field()
+# Map resolvers to fields in Query type using decorator syntax...
+@query.field("user")
+def resolve_hello(_, info):
+    return {'id': '33','name':'test'}
