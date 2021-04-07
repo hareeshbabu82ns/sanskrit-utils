@@ -1,4 +1,4 @@
-# Samskrutam Utilities
+# Samskrutam Utilities [![Drone Build Status](https://drone.terabits.io/api/badges/hareeshbabu82ns/sanskrit-utils/status.svg)](https://drone.terabits.io/hareeshbabu82ns/sanskrit-utils)
 Contains Utilities to help learning Samskrutam
 
 * **sanskrit_parser** is helpful in splitting and adding the words
