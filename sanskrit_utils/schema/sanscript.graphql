@@ -1,0 +1,35 @@
+extend type Query {
+  """
+  Transliterate from and to supported Schemes
+  """
+  transliterate(
+      text: String!
+      schemeFrom: SanscriptScheme
+      schemeTo: SanscriptScheme
+    ): String!
+}
+
+"""
+Sanskript Transliterate Schemes
+"""
+enum SanscriptScheme{
+	"""
+	Devanagari (Samskrutam)
+	"""
+	DEVANAGARI
+	"""
+	International Alphabet of Sanskrit Transliteration
+	"""
+	IAST
+	"""
+	Indian languages TRANSliteration
+	"""
+	ITRANS
+	"""
+	Sanskrit Library Phonetic Basic
+	"""
+	SLP1
+	TELUGU
+	TAMIL
+	KANNADA
+}

@@ -75,5 +75,3 @@ $> MONGO_DB_PASSWORD=pwd  \
 ```
 
 #### Issues
-* GitHub web hook `undelevered` error to reach `Drone`
-    * update the web hook settings in GitHub to point to `https://domain/github_hook`
