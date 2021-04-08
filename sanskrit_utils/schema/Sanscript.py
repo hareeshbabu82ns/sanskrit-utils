@@ -50,21 +50,23 @@ def res_q_trans(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI, schemeTo=S
 
 
 @query.field("dictionaryFuzzySearch")
-def res_q_dict_fuzzy_search(_, info, search, origin=[]):
+def res_q_dict_fuzzy_search(_, info, search, origin=[], scheme=SanscriptScheme.DEVANAGARI):
 
     searchFilter = {'$text': {'$search': search}}
     if len(origin) > 0:
         searchFilter['origin'] = {}
         searchFilter['origin']['$in'] = [o.value for o in origin]
 
-    projectionFilter = {"_id": 0, "word": 0, "desc": 0}
+    projectionFilter = {"_id": 0
+                        # "word": 0, "desc": 0
+                        }
 
     data = dictEntriesCollection.find(searchFilter, projectionFilter)
     results = []
     # print([(color.value, color.name) for color in Dictionaries])
     for record in data:
-        item = {'key': record['wordOriginal'],
-                'description': record['descOriginal'],
+        item = {'key': record['word'][scheme.value],
+                'description': record['desc'][scheme.value],
                 'origin': Dictionaries(record['origin'])}
         results.append(item)
         # print(item)

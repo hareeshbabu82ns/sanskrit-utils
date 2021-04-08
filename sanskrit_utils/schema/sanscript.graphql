@@ -11,11 +11,13 @@ extend type Query {
 	dictionaryKeySearch(
 		search: String!
 		origin: [Dictionary!]
+		scheme: SanscriptScheme
 	):[DictionaryKey!]
 
 	dictionaryFuzzySearch(
 		search: String!
 		origin: [Dictionary!]
+		scheme: SanscriptScheme
 	):[DictionaryItem!]	
 }
 
