@@ -65,8 +65,13 @@ def res_q_dict_fuzzy_search(_, info, search, origin=[], scheme=SanscriptScheme.D
     results = []
     # print([(color.value, color.name) for color in Dictionaries])
     for record in data:
-        item = {'key': record['word'][scheme.value],
-                'description': record['desc'][scheme.value],
+        # print(record)
+        key = record['word'][scheme.value] if record['word'].get(
+            scheme.value) else record['wordOriginal']
+        description = record['desc'][scheme.value] if record['desc'].get(
+            scheme.value) else record['descOriginal']
+        item = {'key': key,
+                'description': description,
                 'origin': Dictionaries(record['origin'])}
         results.append(item)
         # print(item)
