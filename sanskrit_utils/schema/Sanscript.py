@@ -1,12 +1,14 @@
 import enum
 import pymongo
-from ariadne import EnumType
+from ariadne import EnumType, ObjectType
 from sanskrit_utils.schema import query
 from indic_transliteration import sanscript
 from indic_transliteration.sanscript import SchemeMap, SCHEMES, transliterate
 
 from sanskrit_utils.database import dictEntriesCollection
 # from sanskrit_utils.database import mongodbClient, mdbDB
+
+dictionaryItem = ObjectType('DictionaryItem')
 
 # sanscriptSchemesEnum = EnumType("SanscriptScheme",{
 #   "DEVANAGARI" : sanscript.DEVANAGARI,
@@ -48,19 +50,75 @@ def res_q_transliterate(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI, sc
     # return f'{text},{schemeFrom},{schemeTo}'
     return transliterate(text, schemeFrom.value, schemeTo.value)
 
+# @dictionaryItem.field("key")
+# def res_q_dict_item_key(record, info, scheme=SanscriptScheme.DEVANAGARI):
+#     print(record)
+#     key = record['word'][scheme.value] if record['word'].get(
+#         scheme.value) else record['wordOriginal']
+#     return key
 
-@query.field("dictionaryFuzzySearch")
-def res_q_dict_fuzzy_search(_, info, search, origin=[],
-                            scheme=SanscriptScheme.DEVANAGARI, limit=100):
 
-    searchFilter = {'$text': {'$search': search}}
+@query.field("dictionarySearch")
+def res_q_dict_search(_, info, search,
+                      searchScheme=SanscriptScheme.SLP1,
+                      fuzzySearch=False,
+                      searchOnlyKeys=False,
+                      caseInsensitive=False,
+                      startsWith=False, endsWith=False,
+                      origin=[],
+                      outputScheme=SanscriptScheme.DEVANAGARI,
+                      limit=100):
+
+    print(info)
+    requestedOutputFields = [
+        node.name.value for node in info.field_nodes[0].selection_set.selections]
+
+    searchFilter = {}
+
+    finalSearch = search if searchScheme == SanscriptScheme.SLP1 else transliterate(
+        search, searchScheme.value, sanscript.SLP1)
+
+    if fuzzySearch:
+        searchFilter = {'$text': {'$search': finalSearch}}
+    else:
+        if startsWith:
+            finalSearch = '^' + finalSearch
+        if endsWith:
+            finalSearch = finalSearch + '$'
+        regexOptions = ''
+        if caseInsensitive:
+            regexOptions = 'i'
+
+        print(finalSearch)
+        searchRegex = {'$regex': finalSearch, '$options': regexOptions}
+        searchFilter = []
+        searchFilter.append({'wordOriginal': searchRegex})
+        searchFilter.append({f'word.{sanscript.SLP1}': searchRegex})
+        if not searchOnlyKeys:
+            searchFilter.append({'descOriginal': searchRegex})
+            searchFilter.append({f'desc.{sanscript.SLP1}': searchRegex})
+        searchFilter = {'$or': searchFilter}
+
+    print(searchFilter)
+
     if len(origin) > 0:
         searchFilter['origin'] = {}
         searchFilter['origin']['$in'] = [o.value for o in origin]
 
-    projectionFilter = {"_id": 0
-                        # "word": 0, "desc": 0
-                        }
+    # projectionFilter = {"_id": 1,
+    #                     "wordOriginal": 1 if 'key' in requestedOutputFields else 0,
+    #                     "word": 1 if 'key' in requestedOutputFields else 0,
+    #                     "descOriginal": 1 if 'description' in requestedOutputFields else 0,
+    #                     "desc": 1 if 'description' in requestedOutputFields else 0
+    #                     }
+    projectionFilter = {"_id": 1, "origin": 1}
+    if 'key' in requestedOutputFields:
+        projectionFilter["wordOriginal"] = 1
+        projectionFilter["word"] = 1
+
+    if 'description' in requestedOutputFields:
+        projectionFilter["descOriginal"] = 1
+        projectionFilter["desc"] = 1
 
     data = dictEntriesCollection.find(
         searchFilter, projectionFilter).limit(limit)
@@ -68,59 +126,17 @@ def res_q_dict_fuzzy_search(_, info, search, origin=[],
     # print([(color.value, color.name) for color in Dictionaries])
     for record in data:
         # print(record)
-        key = record['word'][scheme.value] if record['word'].get(
-            scheme.value) else record['wordOriginal']
-        description = record['desc'][scheme.value] if record['desc'].get(
-            scheme.value) else record['descOriginal']
-        item = {'key': key,
-                'description': description,
+        item = {'id': record['_id'],
                 'origin': Dictionaries(record['origin'])}
+
+        if 'key' in requestedOutputFields:
+            item['key'] = record['word'][outputScheme.value] if record['word'].get(
+                outputScheme.value) else record['wordOriginal']
+        if 'description' in requestedOutputFields:
+            item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
+                outputScheme.value) else record['descOriginal']
+
         results.append(item)
         # print(item)
-    return results
-
-
-@query.field("dictionaryKeySearch")
-def res_q_dict_key_search(_, info, search, caseInsensitive=False,
-                          startsWith=False, endsWith=False,
-                          origin=[], scheme=SanscriptScheme.DEVANAGARI,
-                          limit=100):
-
-    finalSearch = search
-    if startsWith:
-        finalSearch = '^' + finalSearch
-    # finalSearch = finalSearch + search
-    if endsWith:
-        finalSearch = finalSearch + '$'
-    # finalSearch = finalSearch + '\\'
-    regexOptions = ''
-    if caseInsensitive:
-        regexOptions = 'i'
-
-    print(finalSearch)
-    searchFilter = {'wordOriginal': {
-        '$regex': finalSearch, '$options': regexOptions}}
-    if len(origin) > 0:
-        searchFilter['origin'] = {}
-        searchFilter['origin']['$in'] = [o.value for o in origin]
-
-    projectionFilter = {"_id": 0
-                        # "word": 0, "desc": 0
-                        }
-
-    data = dictEntriesCollection.find(
-        searchFilter, projectionFilter).limit(limit)
-    results = []
-    # print([(color.value, color.name) for color in Dictionaries])
-    for record in data:
-        # print(record)
-        key = record['word'][scheme.value] if record['word'].get(
-            scheme.value) else record['wordOriginal']
-        description = record['desc'][scheme.value] if record['desc'].get(
-            scheme.value) else record['descOriginal']
-        item = {'key': key,
-                'description': description,
-                'origin': Dictionaries(record['origin'])}
-        results.append(item)
-        # print(item)
+        # break
     return results

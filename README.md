@@ -89,30 +89,55 @@ $> MONGO_DB_PASSWORD=pwd  \
 }
 ```
 
-* dictionary full text (fuzzy) search
+* dictionary search
 ```graphql
 {
-    dictionaryFuzzySearch(search:"rama",origin:[DHATU_PATA]){
-        key
-        description
-        origin
-    }
-}
-```
-
-* dictionary key search
-```graphql
-{
-    dictionaryKeySearch(search: "rAma",
-		limit: 10,
-        startsWith:true,
-        endsWith:true,
-        caseInsensitive:true,
-        origin: [MWE], scheme: TELUGU) {
+  dictionarySearch(
+    search: "idAm"
+    searchScheme: SLP1
+    fuzzySearch: false
+    startsWith: false
+    endsWith: false
+    searchOnlyKeys: false
+    origin: [VCP]
+    outputScheme: TELUGU
+    limit: 10
+  ) {
+    id
     key
+    description
     origin
   }
 }
 ```
-
+#### Indexes
+```js
+[ 
+  { v: 2, key: { _id: 1 }, name: '_id_' },
+  { v: 2,
+    key: { _fts: 'text', _ftsx: 1 },
+    name: 'fts',
+    background: false,
+    weights: { 'desc.slp1': 1, 'word.slp1': 1 },
+    default_language: 'english',
+    language_override: 'language',
+    textIndexVersion: 3 },
+  { v: 2,
+    key: { wordOriginal: 1 },
+    name: 'wordOriginal_1',
+    background: false },
+  { v: 2,
+    key: { 'word.slp1': 1 },
+    name: 'word.slp1_1',
+    background: false },
+  { v: 2,
+    key: { descOriginal: 1 },
+    name: 'descOriginal_1',
+    background: false },
+  { v: 2,
+    key: { 'desc.slp1': 1 },
+    name: 'desc.slp1_1',
+    background: false } 
+]
+```
 #### Issues

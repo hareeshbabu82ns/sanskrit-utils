@@ -8,26 +8,46 @@ extend type Query {
       schemeTo: SanscriptScheme
     ): String!
 
-	dictionaryKeySearch(
+	dictionarySearch(
 		search: String!
+		"""
+		Search String scheme (default: SLP1)
+		"""
+		searchScheme: SanscriptScheme
+		"""
+		full text search on key and description
+		"""
+		fuzzySearch: Boolean = false
+		"""
+		Searches only in Keys, skips checking in descriptions \
+		`ignored when fuzzySearch is selected`
+		"""
+		searchOnlyKeys: Boolean = false
 		caseInsensitive: Boolean = false
+		"""
+		searches where the input is at starting position \
+		`ignored when fuzzySearch is selected`
+		"""
 		startsWith: Boolean = false
+		"""
+		searches where the input is at ending position \
+		`ignored when fuzzySearch is selected`
+		"""
 		endsWith: Boolean = false
 		origin: [Dictionary!]
-		scheme: SanscriptScheme
+		"""
+		scheme for output (default: DEVANAGARI)
+		"""
+		outputScheme: SanscriptScheme
 		limit: Int = 100
-	):[DictionaryKey!]
+	):[DictionaryItem!]
 
-	dictionaryFuzzySearch(
-		search: String!
-		origin: [Dictionary!]
-		scheme: SanscriptScheme
-		limit: Int = 100
-	):[DictionaryItem!]	
 }
 
 type DictionaryItem{
+	id: ID!
 	key: String!
+	# key(scheme: SanscriptScheme): String!
 	description: String
 	origin: Dictionary!
 }
