@@ -100,4 +100,19 @@ $> MONGO_DB_PASSWORD=pwd  \
 }
 ```
 
+* dictionary key search
+```graphql
+{
+    dictionaryKeySearch(search: "rAma",
+		limit: 10,
+        startsWith:true,
+        endsWith:true,
+        caseInsensitive:true,
+        origin: [MWE], scheme: TELUGU) {
+    key
+    origin
+  }
+}
+```
+
 #### Issues

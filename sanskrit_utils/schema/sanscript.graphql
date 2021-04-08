@@ -10,14 +10,19 @@ extend type Query {
 
 	dictionaryKeySearch(
 		search: String!
+		caseInsensitive: Boolean = false
+		startsWith: Boolean = false
+		endsWith: Boolean = false
 		origin: [Dictionary!]
 		scheme: SanscriptScheme
+		limit: Int = 100
 	):[DictionaryKey!]
 
 	dictionaryFuzzySearch(
 		search: String!
 		origin: [Dictionary!]
 		scheme: SanscriptScheme
+		limit: Int = 100
 	):[DictionaryItem!]	
 }
 
