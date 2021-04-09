@@ -29,8 +29,20 @@
 
 - name: start
   command: docker-compose -f {{ app_templates_dir }}/docker-compose.yaml up -d
-  
+
+- name: copy reverse-proxy conf
+  ansible.builtin.copy:
+    src: "{{ app_templates_dir }}/subdomain.conf"
+    remote_src: yes
+    dest: "{{reverse_proxy_conf_dir}}/{{app_name}}.subdomain.conf"
+    owner: nobody
+    group: users
+    mode: u=rw,g=r,o=r
+
+- name: Restart Reverse Proxy {{reverse_proxy_name}}
+  command: docker restart {{reverse_proxy_name}}
+
 - name: cleanup templates directory
   file:
-    path: "{{ app_templates_dir }}"
+    path: "{{app_templates_dir}}"
     state: absent

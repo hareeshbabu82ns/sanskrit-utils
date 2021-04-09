@@ -5,8 +5,13 @@ docker_network: "proxynet"
 tmp_dir: "/tmp"
 appdata_dir: "/mnt/user/appdata"
 
+reverse_proxy_name: "swag"
+reverse_proxy_dir: "{{appdata_dir}}/{{reverse_proxy_name}}"
+reverse_proxy_conf_dir: "{{reverse_proxy_dir}}/nginx/proxy-confs"
+
 docker_domain: "docker"
 server_domain: "{{vault_server_domain}}"
+api_sub_domain: "api"
 
 db_host: "{{vault_db_host}}"
 db_port: "{{vault_db_port}}"
