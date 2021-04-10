@@ -59,17 +59,18 @@ def res_q_transliterate(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI, sc
 
 
 @query.field("dictionarySearch")
-def res_q_dict_search(_, info, search,
-                      searchScheme=SanscriptScheme.SLP1,
-                      fuzzySearch=False,
-                      searchOnlyKeys=False,
-                      caseInsensitive=False,
-                      startsWith=False, endsWith=False,
-                      origin=[],
-                      outputScheme=SanscriptScheme.DEVANAGARI,
-                      limit=100):
+def res_q_dict_search(_, info, searchWith):
+    search = searchWith['search']
+    searchScheme = searchWith.get('searchScheme', SanscriptScheme.SLP1)
+    fuzzySearch = searchWith.get('fuzzySearch', False)
+    searchOnlyKeys = searchWith.get('searchOnlyKeys', False)
+    caseInsensitive = searchWith.get('caseInsensitive', False)
+    startsWith = searchWith.get('startsWith', False)
+    endsWith = searchWith.get('endsWith', False)
+    origin = searchWith.get('origin', [])
+    outputScheme = searchWith.get('outputScheme', SanscriptScheme.DEVANAGARI)
+    limit = searchWith.get('limit', 100)
 
-    print(info)
     requestedOutputFields = [
         node.name.value for node in info.field_nodes[0].selection_set.selections]
 

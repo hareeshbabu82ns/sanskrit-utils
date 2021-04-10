@@ -8,7 +8,10 @@ extend type Query {
       schemeTo: SanscriptScheme
     ): String!
 
-	dictionarySearch(
+	dictionarySearch(searchWith: DictionarySearchInput!):[DictionaryItem!]
+
+}
+input DictionarySearchInput {
 		search: String!
 		"""
 		Search String scheme (default: SLP1)
@@ -39,9 +42,7 @@ extend type Query {
 		scheme for output (default: DEVANAGARI)
 		"""
 		outputScheme: SanscriptScheme
-		limit: Int = 100
-	):[DictionaryItem!]
-
+		limit: Int = 100	
 }
 
 type DictionaryItem{
