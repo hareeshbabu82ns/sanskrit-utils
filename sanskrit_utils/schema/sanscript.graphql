@@ -9,6 +9,13 @@ extend type Query {
     ): String!
 
 	dictionarySearch(searchWith: DictionarySearchInput!):[DictionaryItem!]
+	dictionarySearchById(
+		id:ID!
+		"""
+		scheme for output (default: DEVANAGARI)
+		"""
+		outputScheme: SanscriptScheme	
+	):DictionaryItem!
 
 }
 input DictionarySearchInput {

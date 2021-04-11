@@ -1,5 +1,6 @@
 import enum
 import pymongo
+from bson.objectid import ObjectId
 from ariadne import EnumType, ObjectType
 from sanskrit_utils.schema import query
 from indic_transliteration import sanscript
@@ -56,6 +57,22 @@ def res_q_transliterate(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI, sc
 #     key = record['word'][scheme.value] if record['word'].get(
 #         scheme.value) else record['wordOriginal']
 #     return key
+
+
+@query.field("dictionarySearchById")
+def res_q_dict_item_by_id(_, info, id, outputScheme=SanscriptScheme.DEVANAGARI):
+
+    record = dictEntriesCollection.find_one(ObjectId(id))
+    item = {'id': record['_id'],
+            'origin': Dictionaries(record['origin'])}
+
+    item['key'] = record['word'][outputScheme.value] if record['word'].get(
+        outputScheme.value) else record['wordOriginal']
+
+    item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
+        outputScheme.value) else record['descOriginal']
+
+    return item
 
 
 @query.field("dictionarySearch")
