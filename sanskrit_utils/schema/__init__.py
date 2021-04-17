@@ -7,6 +7,8 @@ from .Mutation import mutation
 from .User import user
 from .Sanscript import sanscriptSchemesEnum, dictionaryEnum, dictionaryItem
 
+from .sans_parser import analyzer
+
 type_defs = load_schema_from_path("sanskrit_utils/schema")
 
 type_resolvers = [query, mutation, user, dictionaryItem,
