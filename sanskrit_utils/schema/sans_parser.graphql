@@ -1,0 +1,23 @@
+extend type Query {
+  """
+  Split Sentence
+  """
+  splits(
+      text: String!
+      schemeFrom: SanscriptScheme
+      schemeTo: SanscriptScheme
+			strictIO: Boolean
+      limit: Int
+    ): [[String!]!]!
+
+  """
+  Joins Words (Sandhi)
+  """
+	joins(
+		words: [String!]!
+		schemeFrom: SanscriptScheme
+		schemeTo: SanscriptScheme
+		strictIO: Boolean
+	): [String!]!
+
+}
