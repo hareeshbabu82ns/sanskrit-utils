@@ -110,6 +110,79 @@ $> MONGO_DB_PASSWORD=pwd  \
   }
 }
 ```
+
+* vaakya split
+```graphql
+{
+  splits(
+    text: "कालिदासस्य जीवनवृत्तिविषये अनेकाः लोकविश्रुतयः अनेके वादाः च सन्ति"
+    schemeTo: TELUGU
+    limit: 2
+    strictIO: false
+  )
+}
+```
+* word joins (sandhi)
+```graphql
+{
+  joins(
+    words: ["కాలి","దాసస్య"]
+    schemeFrom:TELUGU
+    schemeTo: TELUGU
+    strictIO: false
+  )
+}
+```
+
+* word tags
+```graphql
+{
+  tags(
+    text:"కాలిదాసస్య"
+    schemeFrom:TELUGU
+    schemeTo:TELUGU
+  ){
+    word
+    tags
+  }
+}
+```
+
+* presegmented tags
+```graphql
+{
+  presegmented(text:"దేవదత్తః గ్రామం గచ్ఛతి"
+    schemeFrom:TELUGU
+    schemeTo: TELUGU)
+}
+```
+
+* presegmented parser tags
+```graphql
+{
+  parse(text: "देवदत्तः ग्रामं गच्छति", schemeTo: TELUGU) {
+    parseDots
+    parseDotURLs
+    splitDot
+    splitDotURL
+    analysis {
+      graph {
+        node {
+          pada
+          root
+          tags
+        }
+        predecessor {
+          pada
+          root
+          tags
+        }
+        sambandha
+      }
+    }
+}
+```
+
 #### Indexes
 ```js
 [ 

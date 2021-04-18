@@ -3,12 +3,12 @@ extend type Query {
   Split Sentence
   """
   splits(
-      text: String!
-      schemeFrom: SanscriptScheme
-      schemeTo: SanscriptScheme
-			strictIO: Boolean
-      limit: Int
-    ): [[String!]!]!
+    text: String!
+    schemeFrom: SanscriptScheme
+    schemeTo: SanscriptScheme
+    strictIO: Boolean
+    limit: Int
+  ): [[String!]!]!
 
   """
   Joins Words (Sandhi)
@@ -20,4 +20,65 @@ extend type Query {
 		strictIO: Boolean
 	): [String!]!
 
+  """
+  Tags of a Sentense
+  """
+  tags(
+    text: String!
+		schemeFrom: SanscriptScheme
+		schemeTo: SanscriptScheme
+		strictIO: Boolean    
+  ): [Tag!]!
+
+  """
+  PreSegmented Splits \n
+  - expects list of words with spaces in `text` \n
+  - expects the words to be already splitted for `sandhis` \n
+  - ex: text: "देवदत्तः ग्रामं गच्छति"
+  """
+  presegmented(
+    text: String!
+    schemeFrom: SanscriptScheme
+    schemeTo: SanscriptScheme
+    strictIO: Boolean
+    limit: Int
+  ): [String!]!
+
+  parse(
+    text: String!
+    schemeFrom: SanscriptScheme
+    schemeTo: SanscriptScheme
+    strictIO: Boolean
+    limit: Int
+  ): Parse!
+
+}
+
+type Parse {
+  analysis: [ParseItem]!
+  splitDot: String
+  splitDotURL: String
+  parseDots: [String!]!
+  parseDotURLs: [String!]!
+}
+
+type ParseItem {
+  graph: [ParseGraph!]!
+}
+
+type ParseGraph {
+  node: ParseTag
+  predecessor: ParseTag
+  sambandha: String
+}
+
+type ParseTag {
+  pada: String!
+  root: String
+  tags: [String!]!
+}
+
+type Tag {
+  word: String!
+  tags: [String!]!
 }

@@ -52,14 +52,40 @@ analyzer = LexicalSandhiAnalyzer()
 # print(parses[0].to_dot())
 
 
-"""Sandhi Joins"""
-first_in = SanskritNormalizedString(
-    'jIvan', encoding=SLP1, strict_io=True)
-second_in = SanskritNormalizedString(
-    'avftti', encoding=SLP1, strict_io=True)
-joins = analyzer.sandhi.join(first_in, second_in)
+# """Sandhi Joins"""
+# first_in = SanskritNormalizedString(
+#     'jIvan', encoding=SLP1, strict_io=True)
+# second_in = SanskritNormalizedString(
+#     'avftti', encoding=SLP1, strict_io=True)
+# joins = analyzer.sandhi.join(first_in, second_in)
 
-sjoins = [SanskritNormalizedString(join, encoding=SLP1, strict_io=True).transcoded(
-    TELUGU, True) for join in list(joins)]
+# sjoins = [SanskritNormalizedString(join, encoding=SLP1, strict_io=True).transcoded(
+#     TELUGU, True) for join in list(joins)]
 
-print(sjoins)
+# print(sjoins)
+
+
+""" Parse a presegmented sentence """
+parser = Parser()
+text = "देवदत्तः ग्रामं गच्छति"
+limit = 10
+# vobj = SanskritObject(text, strict_io=strictIO, replace_ending_visarga=None)
+# parser = Parser(input_encoding=SANS_TO_PARSER_SCHEMES_MAP[schemeFrom.value],
+#                 output_encoding=SANS_TO_PARSER_SCHEMES_MAP[schemeTo.value],
+#                 replace_ending_visarga='s')
+parser.strict_io = False
+parser.input_encoding = 'devanagari'
+parser.output_encoding = 'telugu'
+mres = []
+for split in parser.split(text, limit=limit, pre_segmented=True):
+    parses = list(split.parse(limit=limit))
+    # print(parses)
+    sdot = split.to_dot()
+    # [print(x.serializable()) for x in parses]
+    mres = [x.serializable() for x in parses]
+    pdots = [x.to_dot() for x in parses]
+
+r = {"analysis": mres,
+     "splitDot": sdot,
+     "parseDots": pdots}
+# print(r["analysis"])
