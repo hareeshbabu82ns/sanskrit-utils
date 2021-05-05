@@ -13,6 +13,19 @@ services:
     networks:
       - "{{docker_network}}"
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # - "traefik.http.routers.{{server_sub_domain}}.entrypoints=http"
+      # - "traefik.http.routers.{{server_sub_domain}}.rule=Host(`{{server_sub_domain}}.{{api_sub_domain}}.{{server_domain}}`)"
+      # - "traefik.http.middlewares.{{server_sub_domain}}.redirectscheme.scheme=https"
+      # # - "traefik.http.middlewares.{{server_sub_domain}}.middlewares=https-redirect"
+      - "traefik.http.routers.{{server_sub_domain}}-secure.entrypoints=https"
+      - "traefik.http.routers.{{server_sub_domain}}-secure.rule=Host(`{{server_sub_domain}}.{{api_sub_domain}}.{{server_domain}}`)"
+      - "traefik.http.routers.{{server_sub_domain}}-secure.tls=true"
+      - "traefik.http.routers.{{server_sub_domain}}-secure.tls.certresolver=route53"
+      # - "traefik.http.routers.{{server_sub_domain}}-secure.service={{app_name}}"
+      # - "traefik.http.services.{{server_sub_domain}}.loadbalancer.server.port={{app_port}}"
+      # - "traefik.docker.network=proxy"
 
 networks:
   "{{docker_network}}":

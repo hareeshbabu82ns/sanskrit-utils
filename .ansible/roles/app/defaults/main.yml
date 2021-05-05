@@ -1,6 +1,7 @@
 port_http: 24252
 app_port: 80
 app_name: "sanskrit-utils"
+server_sub_domain: "{{app_name}}"
 app_data_dir: "{{appdata_dir}}/sanskrit-utils"
 app_templates_dir: "{{ app_data_dir }}/tmp_templates"
 app_image_version: "latest"

@@ -41,6 +41,7 @@
 
 - name: Restart Reverse Proxy {{reverse_proxy_name}}
   command: docker restart {{reverse_proxy_name}}
+  ignore_errors: yes
 
 - name: cleanup templates directory
   file:
