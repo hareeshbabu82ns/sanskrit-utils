@@ -88,4 +88,4 @@ for split in parser.split(text, limit=limit, pre_segmented=True):
 r = {"analysis": mres,
      "splitDot": sdot,
      "parseDots": pdots}
-# print(r["analysis"])
+print(r["analysis"])

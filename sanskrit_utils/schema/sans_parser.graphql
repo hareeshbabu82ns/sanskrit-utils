@@ -50,14 +50,15 @@ extend type Query {
     schemeTo: SanscriptScheme
     strictIO: Boolean
     limit: Int
-  ): Parse!
+    preSegmented: Boolean
+  ): [Parse!]!
 
 }
 
 type Parse {
   analysis: [ParseItem]!
-  splitDot: String
-  splitDotURL: String
+  splitDot: String!
+  splitDotURL: String!
   parseDots: [String!]!
   parseDotURLs: [String!]!
 }

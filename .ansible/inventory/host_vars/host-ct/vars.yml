@@ -1,0 +1,12 @@
+ssh_user: "{{ vault_ssh_user }}"
+
+server_domain: "{{vault_server_domain}}"
+docker_fdqn: "docker.{{vault_server_domain}}"
+
+git_tag: "latest"
+
+db_host: "{{vault_db_host}}"
+db_port: "{{vault_db_port}}"
+db_database: "{{vault_db_database}}"
+db_user: "{{vault_db_user}}"
+db_password: "{{vault_db_password}}"

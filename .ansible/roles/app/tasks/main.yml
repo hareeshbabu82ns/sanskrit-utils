@@ -1,49 +1,37 @@
 ---
-- name: create data folders
-  file:
-    path: "{{item}}"
-    state: directory
-  loop:
-  - "{{app_data_dir}}"
+- name: GitTag from Extra Vars
+  debug:
+    var: git_tag
 
-- name: create templates folder
-  file:
-    path: "{{item}}"
-    state: directory
-  loop:
-  - "{{app_templates_dir}}"
+# - name: Ansible Env
+#   debug:
+#     var: ansible_env
 
-- name: copy templates
+# - name: Copy KubeConfig
+#   shell: >
+#     mkdir -p {{ansible_env.HOME}}/.kube/ \
+#     && touch {{ansible_env.HOME}}/.kube/config \
+#     && echo {{ansible_env.KUBECONFIG_FILE_CONTENT}} | base64 -d > {{ansible_env.HOME}}/.kube/config
+
+# - name: Check K8S connectivity
+#   shell: >
+#     kubectl get nodes
+#   register: k8s_nodes
+
+# - name: K8S nodes
+#   debug:
+#     var: k8s_nodes
+
+- name: copy templates to tmp
   template:
-    src: "{{ item }}"
-    dest: "{{ app_templates_dir }}/{{ item | basename }}"
-  with_fileglob:
-    - ../templates/*
+    src: "{{item}}"
+    dest: "/tmp/{{item}}"
+    owner: "{{ansible_ssh_user}}"
+    # group: users
+    # mode: 0600
+  loop:
+    - deployment.yaml
 
-- name: shutdown previous instance (if available)
-  command: docker-compose -f {{ app_templates_dir }}/docker-compose-prev.yaml down
-  ignore_errors: yes
-- name: shutdown previous instance (if available)
-  command: docker-compose -f {{ app_templates_dir }}/docker-compose.yaml down
-  ignore_errors: yes
-
-- name: start
-  command: docker-compose -f {{ app_templates_dir }}/docker-compose.yaml up -d
-
-- name: copy reverse-proxy conf
-  ansible.builtin.copy:
-    src: "{{ app_templates_dir }}/subdomain.conf"
-    remote_src: yes
-    dest: "{{reverse_proxy_conf_dir}}/{{app_name}}.subdomain.conf"
-    owner: nobody
-    group: users
-    mode: u=rw,g=r,o=r
-
-- name: Restart Reverse Proxy {{reverse_proxy_name}}
-  command: docker restart {{reverse_proxy_name}}
-  ignore_errors: yes
-
-- name: cleanup templates directory
-  file:
-    path: "{{app_templates_dir}}"
-    state: absent
+- name: apply deployment to k8s
+  shell: >
+    kubectl apply -f /tmp/deployment.yaml

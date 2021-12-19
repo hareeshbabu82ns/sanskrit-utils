@@ -1,8 +1,5 @@
-port_http: 24252
 app_port: 80
-app_name: "sanskrit-utils"
-server_sub_domain: "{{app_name}}"
-app_data_dir: "{{appdata_dir}}/sanskrit-utils"
-app_templates_dir: "{{ app_data_dir }}/tmp_templates"
+app_name: "sanskrit-utils-api"
+app_fqdn: "{{app_name}}.kube.local.io"
 app_image_version: "latest"
-app_image_name: "{{docker_domain}}.{{server_domain}}/home/sanskrit-utils"
+app_image_name: "{{docker_domain}}.{{server_domain}}/home/{{app_name}}:{{app_image_version}}"

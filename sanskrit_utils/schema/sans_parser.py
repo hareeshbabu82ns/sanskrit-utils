@@ -126,8 +126,8 @@ def res_q_presegmented(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI,
 
 
 @query.field("parse")
-def res_q_presegmented(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI,
-                       schemeTo=SanscriptScheme.SLP1, strictIO=False, limit=10):
+def res_q_parse(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI,
+                schemeTo=SanscriptScheme.SLP1, strictIO=False, limit=10, preSegmented=False):
     """ Parse a presegmented sentence """
     # vobj = SanskritObject(text, strict_io=strictIO, replace_ending_visarga=None)
     # parser = Parser(input_encoding=SANS_TO_PARSER_SCHEMES_MAP[schemeFrom.value],
@@ -136,23 +136,28 @@ def res_q_presegmented(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI,
     parser.strict_io = strictIO
     parser.input_encoding = schemeFrom.value
     parser.output_encoding = schemeTo.value
-    mres = []
 
-    for split in parser.split(text, limit=limit, pre_segmented=True):
-        parses = list(split.parse(limit=limit))
+    r = []
+
+    for split in parser.split(text, limit=limit, pre_segmented=preSegmented):
+        # print(split)
+        parses = list(split.parse(limit=2))
         # print(parses)
         sdot = split.to_dot()
+        sdotUrl = prepare_dot_url(sdot)
 
         mres = [parse_item(x.serializable()) for x in parses]
         pdots = [x.to_dot() for x in parses]
 
-    r = {"analysis": mres,
-         "splitDot": sdot,  # transliterate(sdot, SLP1, schemeTo.value),
-         "splitDotURL": prepare_dot_url(sdot),
-         "parseDots": pdots,
-         "parseDotURLs": [prepare_dot_url(dot) for dot in pdots]
-         }
-    # print(r["analysis"])
+        obj = {
+            "analysis": mres,
+            "splitDot": sdot,  # transliterate(sdot, SLP1, schemeTo.value),
+            "splitDotURL": sdotUrl,
+            "parseDots": pdots,
+            "parseDotURLs": [prepare_dot_url(dot) for dot in pdots]
+        }
+        # print(obj["analysis"])
+        r.append(obj)
 
     return r
 
