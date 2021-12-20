@@ -21,7 +21,7 @@ spec:
         app: "{{app_name}}"
     spec:
       containers:
-      - image: "{{docker_fdqn}}/home/{{app_name}}:{{git_tag | default('latest')}}"
+      - image: "{{docker_fdqn}}/home/{{app_name}}:{{img_tag}}"
         imagePullPolicy: Always
         name: "{{app_name}}"
         env:

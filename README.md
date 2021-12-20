@@ -93,15 +93,17 @@ $> MONGO_DB_PASSWORD=pwd  \
 ```graphql
 {
   dictionarySearch(
-    search: "idAm"
-    searchScheme: SLP1
-    fuzzySearch: false
-    startsWith: false
-    endsWith: false
-    searchOnlyKeys: false
-    origin: [VCP]
-    outputScheme: TELUGU
-    limit: 10
+    searchWith: {
+      search: "idAm"
+      searchScheme: SLP1
+      fuzzySearch: false
+      startsWith: false
+      endsWith: false
+      searchOnlyKeys: false
+      origin: [VCP]
+      outputScheme: TELUGU
+      limit: 10
+    }
   ) {
     id
     key
