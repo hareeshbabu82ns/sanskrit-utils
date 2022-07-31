@@ -36,11 +36,44 @@ sanscriptSchemesEnum = EnumType("SanscriptScheme", SanscriptScheme)
 
 
 class Dictionaries(enum.Enum):
-    VCP = 'vcp'
-    DHATU_PATA = 'Dhātu-pāṭha'
-    MW = 'mw'
-    MWE = 'mwe'
-    SKD = 'skd'
+    DHATU_PATA = 'dhatus'
+    # Sanskrit-English Dictionaries
+    WIL = 'wil'  # 1832	Wilson Sanskrit-English Dictionary
+    YAT = 'yat'  # 1846	Yates Sanskrit-English Dictionary
+    GST = 'gst'  # 1856	Goldstücker Sanskrit-English Dictionary
+    BEN = 'ben'  # 1866	Benfey Sanskrit-English Dictionary
+    MW72 = 'mw72'  # 1872	Monier-Williams Sanskrit-English Dictionary
+    LAN = 'lan'  # 1884	Lanman`s Sanskrit Reader Vocabulary
+    AP90 = 'ap90'  # 1890	Apte Practical Sanskrit-English Dictionary
+    CAE = 'cae'  # 1891	Cappeller Sanskrit-English Dictionary
+    MD = 'md'  # 1893	Macdonell Sanskrit-English Dictionary
+    MW = 'mw'  # 1899	Monier-Williams Sanskrit-English Dictionary
+    SHS = 'shs'  # 1900	Shabda-Sagara Sanskrit-English Dictionary
+    AP = 'ap'  # 1957	Practical Sanskrit-English Dictionary
+    PD = 'pd'  # 1976	An Encyclopedic Dictionary
+
+    # English-Sanskrit Dictionaries
+    MWE = 'mwe'  # 1851	Monier-Williams English-Sanskrit Dictionary
+    BOR = 'bor'  # 1877	Borooah English-Sanskrit Dictionary
+    AE = 'ae'  # 1920	Apte Student`s English-Sanskrit Dictionary
+
+    # Sanskrit-Sanskrit Dictionaries
+    ARMH = 'armh'  # 1861	Abhidhānaratnamālā of Halāyudha
+    VCP = 'vcp'  # 1873	Vacaspatyam
+    SKD = 'skd'  # 1886	Sabda-kalpadruma
+
+    # Specialized Dictionaries
+    INM = 'inm'  # 1904	Index to the Names in the Mahabharata
+    VEI = 'vei'  # 1912	The Vedic Index of Names and Subjects
+    PUI = 'pui'  # 1951	The Purana Index
+    BHS = 'bhs'  # 1953	Edgerton Buddhist Hybrid Sanskrit Dictionary
+    ACC = 'acc'  # 1962	Aufrecht's Catalogus Catalogorum
+    KRM = 'krm'  # 1965	Kṛdantarūpamālā
+    IEG = 'ieg'  # 1966	Indian Epigraphical Glossary
+    SNP = 'snp'  # 1974	Meulenbeld's Sanskrit Names of Plants
+    PE = 'pe'  # 1975	Puranic Encyclopedia
+    PGN = 'pgn'  # 1978	Personal and Geographical Names in the Gupta Inscriptions
+    MCI = 'mci'  # 1993	Mahabharata Cultural Index
 
 
 dictionaryEnum = EnumType("Dictionary", Dictionaries)

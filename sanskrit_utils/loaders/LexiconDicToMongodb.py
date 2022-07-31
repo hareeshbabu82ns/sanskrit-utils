@@ -18,6 +18,7 @@ mdbPassword = os.environ.get('MONGO_DB_PASSWORD', '')
 
 # mongodb://sansutils:pwd@192.168.0.10:3333/sansutils
 mdbUrl = f'mongodb://{mdbUser}:{mdbPassword}@{mdbHost}:{mdbPort}/{mdbDB}'
+# mdbUrl = 'mongodb://{mdbUser}:{mdbPassword}'
 print('MongoDB connecting to:', mdbUrl)
 
 myclient = pymongo.MongoClient(mdbUrl)
@@ -25,23 +26,40 @@ myclient = pymongo.MongoClient(mdbUrl)
 mydb = myclient[mdbDB]
 
 dictEntriesCollection = mydb["dictEntries"]
-
+SANS_WORD_TAG = {
+    'bhs': 'b',
+    'ieg': 'i',
+    'inm': 'i',
+    'lan': 'b',
+    'mci': 'b',
+    'pgn': 'i',
+    'pui': 'i',
+    'snp': 'i',
+    'vei': 'b',
+    'default': 's',
+}
 # Dictionaries
-LEXICON_DICT_LIST = ["vcp", "skd", "mw", "mwe"]
-LEXICON_SAN_DICT_LIST = ["vcp", "skd", "mw"]
+LEXICON_DICT_LIST = [
+    'acc',    'ae',    'ap90',    'armh',    'ben',
+    'bhs',    'bor',    'cae',    'gst',    'ieg',
+    'inm',    'krm',    'lan',    'mci',    'md',
+    'mw',    'mw72',    'mwe',    'pe',    'pgn',
+    'pui',    'shs',    'skd',    'snp',    'vcp',
+    'vei',    'wil',    'yat'
+]
+# LEXICON_DICT_LIST = ['bhs', 'ieg', 'vcp', 'mwe']
+# LEXICON_DICT_LIST = ["vcp", "skd", "mw", "mwe"]
+LEXICON_SAN_DICT_LIST = [
+    'acc', 'ap90', 'armh', 'ben',
+    'bhs', 'cae', 'gst', 'ieg',
+    'inm', 'krm', 'lan', 'mci',
+    'md', 'mw', 'mw72', 'pe',
+    'pui', 'shs', 'skd', 'snp',
+    'vcp', 'vei', 'wil', 'yat'
+]
 
 SANSCRIPT_LANGS = [sanscript.DEVANAGARI,
                    sanscript.IAST, sanscript.SLP1, sanscript.TELUGU]
-
-vcp_dict_conn = sqlite3.connect('tmp/vcp.sqlite')
-skd_dict_conn = sqlite3.connect('tmp/skd.sqlite')
-mwe_dict_conn = sqlite3.connect('tmp/mwe.sqlite')
-mws_dict_conn = sqlite3.connect('tmp/mw.sqlite')
-
-DICT_CONN_LIST = {'vcp': vcp_dict_conn,
-                  'skd': skd_dict_conn,
-                  'mwe': mwe_dict_conn,
-                  'mw': mws_dict_conn}
 
 
 def convert_text(text, fr=sanscript.SLP1, to=sanscript.ITRANS):
@@ -50,7 +68,7 @@ def convert_text(text, fr=sanscript.SLP1, to=sanscript.ITRANS):
 
 def push_to_mongodb(con, dictName):
     cur = con.cursor()
-
+    print('working on dictionary: ', dictName)
     for row in cur.execute(f'SELECT * FROM {dictName}'):
         record = {"wordOriginal": row[0],
                   "wordIndex": row[1],
@@ -60,10 +78,14 @@ def push_to_mongodb(con, dictName):
         record['word'] = get_word_transripts(row[0], dictName)
         record['desc'] = get_desc_transripts(row[2], dictName)
 
+        # print('\ndesc original: \n', record['descOriginal'])
+        # print('\ndesc tel: \n', record['desc']['telugu'])
         dictEntriesCollection.insert_one(record)
-        print(dictName, row[0])
+        # print(dictName, row[0])
         # print(dictName, '\n', record)
-        # break
+        # limit number of records to upload (for testing)
+        # if(row[1] > 2):
+        #     break
 
     con.close()
 
@@ -87,11 +109,16 @@ def get_word_transripts(text, dictName):
 
 
 def convert_lexicon_html_to_markdown(dictionary,  content, toLang=sanscript.DEVANAGARI):
+    sans_word_tag = SANS_WORD_TAG.get(dictionary, 's')
+    sans_word_lang = sanscript.IAST if sans_word_tag in [
+        'i', 'b'] else sanscript.SLP1
     parser = LexiconHTMLParser()
     if dictionary in LEXICON_SAN_DICT_LIST:
         parser.init(
+            sans_word_tag=sans_word_tag,
             key_fromLang=sanscript.SLP1,
             key_toLang=toLang,
+            fromLang=sans_word_lang,
             toLang=toLang)
     else:
         parser.init(
@@ -105,7 +132,8 @@ def convert_lexicon_html_to_markdown(dictionary,  content, toLang=sanscript.DEVA
 
 def add_lexicon_dict_convertions():
     for dictName in LEXICON_DICT_LIST:
-        push_to_mongodb(DICT_CONN_LIST[dictName], dictName)
+        con = sqlite3.connect(f'tmp/{dictName}.sqlite')
+        push_to_mongodb(con, dictName)
 
 
 if __name__ == '__main__':

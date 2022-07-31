@@ -10,16 +10,19 @@ class LexiconHTMLParser(HTMLParser):
     tag_stack = []
     current_tag = ''
     mark_down = ''
+    sans_word_tag = 's'
     fromLang = sanscript.SLP1
     toLang = sanscript.DEVANAGARI
     key_fromLang = sanscript.SLP1
     key_toLang = sanscript.DEVANAGARI
 
     def init(self,
+             sans_word_tag='s',
              key_fromLang=sanscript.SLP1,
              key_toLang=sanscript.DEVANAGARI,
              fromLang=sanscript.SLP1,
              toLang=sanscript.DEVANAGARI):
+        self.sans_word_tag = sans_word_tag
         self.fromLang = fromLang
         self.toLang = toLang
         self.key_fromLang = key_fromLang
@@ -34,8 +37,13 @@ class LexiconHTMLParser(HTMLParser):
             data = '**'
         elif tag.startswith('key'):
             data = ' _'
-        elif tag in ['body', 'lb', 's']:
+        elif tag in ['body', 'lb']:
             data = '  \n'
+        elif tag in ['div']:
+            attrDict = dict(attrs)
+            # print('attributes:', attrDict)
+            if attrDict.get('n', '') == 'lb':
+                data = '  \n'
         else:
             data = ''
 
@@ -44,6 +52,8 @@ class LexiconHTMLParser(HTMLParser):
     def handle_endtag(self, tag):
         # print("Encountered an end tag :", tag)
         self.current_tag = self.tag_stack.pop()
+        self.current_tag = self.tag_stack[:-1]
+        # print("Remaingin Tags :", self.tag_stack)
         data = ''
         if tag == 'h':
             data = '**'
@@ -61,9 +71,10 @@ class LexiconHTMLParser(HTMLParser):
         if self.current_tag in ['key1', 'key2'] and self.key_fromLang != self.key_toLang:
             final_data = transliterate(
                 data, self.key_fromLang, self.key_toLang)
-        if self.current_tag == 's' and self.fromLang != self.toLang:
+        if self.current_tag == self.sans_word_tag and self.fromLang != self.toLang:
             # sanskrit word
             final_data = transliterate(
                 data, self.fromLang, self.toLang)
+            final_data = f'__{final_data}__'
 
         self.mark_down = self.mark_down + final_data
