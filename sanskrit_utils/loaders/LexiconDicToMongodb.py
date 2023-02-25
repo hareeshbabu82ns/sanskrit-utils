@@ -45,8 +45,9 @@ LEXICON_DICT_LIST = [
     'inm',    'krm',    'lan',    'mci',    'md',
     'mw',    'mw72',    'mwe',    'pe',    'pgn',
     'pui',    'shs',    'skd',    'snp',    'vcp',
-    'vei',    'wil',    'yat'
+    'vei',    'wil',    'yat', 'eng2te'
 ]
+# LEXICON_DICT_LIST = ['eng2te']
 # LEXICON_DICT_LIST = ['bhs', 'ieg', 'vcp', 'mwe']
 # LEXICON_DICT_LIST = ["vcp", "skd", "mw", "mwe"]
 LEXICON_SAN_DICT_LIST = [
@@ -69,14 +70,38 @@ def convert_text(text, fr=sanscript.SLP1, to=sanscript.ITRANS):
 def push_to_mongodb(con, dictName):
     cur = con.cursor()
     print('working on dictionary: ', dictName)
+    idx = 1
     for row in cur.execute(f'SELECT * FROM {dictName}'):
-        record = {"wordOriginal": row[0],
-                  "wordIndex": row[1],
-                  "descOriginal": row[2],
-                  "origin": dictName}
+        # record = {"wordOriginal": row[0],
+        #           "wordIndex": row[1],
+        #           "descOriginal": row[2],
+        #           "origin": dictName}
+        record = {}
+        if dictName in ['eng2te']:
+            record["wordOriginal"] = row[0]
+            record["wordIndex"] = idx
 
-        record['word'] = get_word_transripts(row[0], dictName)
-        record['desc'] = get_desc_transripts(row[2], dictName)
+            descr = ''
+            if row[1] is not None:
+                descr = row[1]
+            if row[2] is not None:
+                descr = descr + ' ' + row[2]
+            descr = descr + ' ' + row[3]
+
+            record["descOriginal"] = descr
+            record["origin"] = dictName
+
+            record['word'] = get_word_transripts(row[0], dictName)
+            record['desc'] = get_desc_transripts(descr, dictName)
+
+        else:
+            record["wordOriginal"] = row[0]
+            record["wordIndex"] = row[1]
+            record["descOriginal"] = row[2]
+            record["origin"] = dictName
+
+            record['word'] = get_word_transripts(row[0], dictName)
+            record['desc'] = get_desc_transripts(row[2], dictName)
 
         # print('\ndesc original: \n', record['descOriginal'])
         # print('\ndesc tel: \n', record['desc']['telugu'])
@@ -86,15 +111,22 @@ def push_to_mongodb(con, dictName):
         # limit number of records to upload (for testing)
         # if(row[1] > 2):
         #     break
+        # if(idx > 2):
+        #     break
+        idx = idx+1
 
     con.close()
 
 
 def get_desc_transripts(text, dictName):
     data = {}
-    for lang in SANSCRIPT_LANGS:
-        data[lang] = convert_lexicon_html_to_markdown(
-            dictName, text, toLang=lang)
+    if dictName in ['eng2te']:
+        for lang in SANSCRIPT_LANGS:
+            data[lang] = convert_text(text, fr=sanscript.TELUGU, to=lang)
+    else:
+        for lang in SANSCRIPT_LANGS:
+            data[lang] = convert_lexicon_html_to_markdown(
+                dictName, text, toLang=lang)
     return data
 
 

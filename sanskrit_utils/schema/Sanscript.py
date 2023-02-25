@@ -37,6 +37,7 @@ sanscriptSchemesEnum = EnumType("SanscriptScheme", SanscriptScheme)
 
 class Dictionaries(enum.Enum):
     DHATU_PATA = 'dhatus'
+    ENG2TEL = 'eng2te'  # various English to Telugu Dictionaries
     # Sanskrit-English Dictionaries
     WIL = 'wil'  # 1832	Wilson Sanskrit-English Dictionary
     YAT = 'yat'  # 1846	Yates Sanskrit-English Dictionary

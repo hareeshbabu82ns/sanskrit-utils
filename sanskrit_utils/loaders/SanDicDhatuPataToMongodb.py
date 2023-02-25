@@ -51,11 +51,12 @@ def push_to_mongodb():
         record = {"wordOriginal": row[1],
                   "wordIndex": row[2],
                   "descOriginal": row[3],
-                  "origin": row[4]}
+                  "origin": 'dhatus',  # row[4]
+                  }
         record['word'] = get_word_transripts(row[1])
         record['desc'] = get_word_transripts(row[3])
         dictEntriesCollection.insert_one(record)
-        print(row[1])
+        # print(record)
 
     con.close()
 

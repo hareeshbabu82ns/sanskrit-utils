@@ -74,6 +74,10 @@ enum Dictionary{
 	"""
 	DHATU_PATA
 	"""
+	English to Telugu Dictionary
+	"""
+	ENG2TEL
+	"""
 	1832	Wilson Sanskrit-English Dictionary
 	"""
 	WIL
