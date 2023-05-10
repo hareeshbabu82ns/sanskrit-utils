@@ -2,78 +2,77 @@ kind: pipeline
 name: sanskrit-utils
 
 steps:
+  # For Custom Docker Registry
+  - name: sanskrit-utils - build docker image
+    image: docker:latest
+    volumes:
+      - name: docker_sock
+        path: /var/run/docker.sock
+    environment:
+      DUSER:
+        from_secret: docker_user
+      DPASS:
+        from_secret: docker_pass
+      SERVER_DOMAIN:
+        from_secret: server_domain
+    commands:
+      - docker login -p $DPASS -u $DUSER docker.$SERVER_DOMAIN
+      - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils-api:latest -f Dockerfile .
+      - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils-api:latest
+    # when:
+    #   branch:
+    #   - master
 
-# For Custom Docker Registry
-- name: sanskrit-utils - build docker image
-  image: docker:latest
-  volumes:
-    - name: docker_sock
-      path: /var/run/docker.sock
-  environment:
-    DUSER:
-      from_secret: docker_user
-    DPASS:
-      from_secret: docker_pass
-    SERVER_DOMAIN:
-      from_secret: server_domain
-  commands:
-    - docker login -p $DPASS -u $DUSER docker.$SERVER_DOMAIN
-    - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils-api:latest -f Dockerfile .
-    - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils-api:latest
-  # when:
-  #   branch:
-  #   - master
+  # Deploy app using ansible
+  - name: apply ansible playbook
+    image: plugins/ansible:1
+    environment:
+      ansible_vault_pass:
+        from_secret: ansible_vault_pass
+      # KUBECONFIG_FILE_CONTENT:
+      #   from_secret: rke2_kubeconfig
+    settings:
+      playbook: .ansible/playbook.yml
+      # galaxy: .ansible/requirements.yml
+      inventory: .ansible/inventory
+      private_key:
+        from_secret: host_ssh_key
+      vault_password:
+        from_secret: ansible_vault_pass
+      extra_vars:
+        git_tag: ${DRONE_TAG}
+    # when:
+    #   branch:
+    #   - master
 
-# Deploy app using ansible
-- name: apply ansible playbook
-  image: plugins/ansible:1
-  environment:
-    ansible_vault_pass:
-      from_secret: ansible_vault_pass
-    # KUBECONFIG_FILE_CONTENT:
-    #   from_secret: rke2_kubeconfig
-  settings:
-    playbook: .ansible/playbook.yml
-    # galaxy: .ansible/requirements.yml
-    inventory: .ansible/inventory
-    private_key:
-      from_secret: host_ssh_key
-    vault_password:
-      from_secret: ansible_vault_pass
-    extra_vars:
-      git_tag: ${DRONE_TAG}
-  # when:
-  #   branch:
-  #   - master
+  # Finally common tasks for all steps
+  - name: notify
+    image: plugins/slack
+    settings:
+      channel: pipelines
+      webhook:
+        from_secret: pipeline_notifier
+      icon_emoji: ":rocket:"
+      # icon_url: https://unsplash.it/48/48/?random
+      # image_url: https://unsplash.it/256/256/?random
+      template: >
+        {{#if build.pull }}
+          *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}*: <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/{{ build.pull }}|Pull Request #{{ build.pull }}>
+        {{else}}
+          *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}: Build #{{ build.number }}* (type: `{{ build.event }}`)
+        {{/if}}
 
-# Finally common tasks for all steps
-- name: notify
-  image: plugins/slack
-  settings:
-    channel: pipelines
-    webhook:
-      from_secret: pipeline_notifier
-    icon_emoji: ":rocket:"
-    # icon_url: https://unsplash.it/48/48/?random
-    # image_url: https://unsplash.it/256/256/?random
-    template: >
-      {{#if build.pull }}
-        *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}*: <https://github.com/{{ repo.owner }}/{{ repo.name }}/pull/{{ build.pull }}|Pull Request #{{ build.pull }}>
-      {{else}}
-        *{{#success build.status}}✔{{ else }}✘{{/success}} {{ uppercasefirst build.status }}: Build #{{ build.number }}* (type: `{{ build.event }}`)
-      {{/if}}
+        Repo: {{ repo.name }}
 
-      Repo: {{ repo.name }}
+        Commit: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commit/{{ build.commit }}|{{ truncate build.commit 8 }}>
 
-      Commit: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commit/{{ build.commit }}|{{ truncate build.commit 8 }}>
-      
-      Branch: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commits/{{ build.branch }}|{{ build.branch }}>
+        Branch: <https://github.com/{{ repo.owner }}/{{ repo.name }}/commits/{{ build.branch }}|{{ build.branch }}>
 
-      Author: {{ build.author }}
+        Author: {{ build.author }}
 
-      <{{ build.link }}|Visit build page ↗>
-  when:
-    status: [ success, failure ]
+        <{{ build.link }}|Visit build page ↗>
+    when:
+      status: [success, failure]
 
 volumes:
   - name: docker_sock
