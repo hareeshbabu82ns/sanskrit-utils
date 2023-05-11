@@ -25,7 +25,7 @@ steps:
 
   # Deploy app using ansible
   - name: apply ansible playbook
-    image: plugins/ansible:1
+    image: plugins/ansible:3
     environment:
       ansible_vault_pass:
         from_secret: ansible_vault_pass
@@ -35,13 +35,12 @@ steps:
       playbook: .ansible/playbook.yml
       # galaxy: .ansible/requirements.yml
       inventory: .ansible/inventory
+      syntax_check: true
       private_key:
         from_secret: host_ssh_key
       vault_password:
         from_secret: ansible_vault_pass
-      extra_vars:
-        git_tag: ${DRONE_TAG}
-        commit_sha: ${DRONE_COMMIT_SHA}
+      extra_vars: git_tag=${DRONE_TAG},commit_sha=${DRONE_COMMIT_SHA}
     # when:
     #   branch:
     #   - master
