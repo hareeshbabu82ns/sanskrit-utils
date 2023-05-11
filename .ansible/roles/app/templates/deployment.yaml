@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   labels:
     app: "{{app_name}}"
+    commit_sha: "{{commit_sha}}"
   name: "{{app_name}}"
   namespace: default
 spec:
@@ -19,6 +20,7 @@ spec:
     metadata:
       labels:
         app: "{{app_name}}"
+        commit_sha: "{{commit_sha}}"
     spec:
       imagePullSecrets:
         - name: docker-terabits

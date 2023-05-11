@@ -12,6 +12,10 @@
   debug:
     var: img_tag
 
+- name: Git Commit SHA
+  debug:
+    var: commit_sha
+
 # - name: Ansible Env
 #   debug:
 #     var: ansible_env

@@ -41,6 +41,7 @@ steps:
         from_secret: ansible_vault_pass
       extra_vars:
         git_tag: ${DRONE_TAG}
+        commit_sha: ${DRONE_COMMIT_SHA}
     # when:
     #   branch:
     #   - master
