@@ -10,6 +10,7 @@ sanskrit_utils.egg-info/
 build/
 dist/
 venv
+.venv
 
 vault.pass
 tmp/

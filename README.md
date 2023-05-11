@@ -1,18 +1,22 @@
 # Samskrutam Utilities [![Drone Build Status](https://drone.terabits.io/api/badges/hareeshbabu82ns/sanskrit-utils/status.svg)](https://drone.terabits.io/hareeshbabu82ns/sanskrit-utils)
+
 Contains Utilities to help learning Samskrutam
 
-* **sanskrit_parser** is helpful in splitting and adding the words
-* **dictionaries** is an interface for various dictionories
+- **sanskrit_parser** is helpful in splitting and adding the words
+- **dictionaries** is an interface for various dictionories
 
 #### Setting up for Development
+
 ```sh
+$> apt install python3-virtualenv
+
 # create virtual env
-$> virtualenv venv
+$> python3 -m virtualenv .venv
 
 # activate virtual env
-$> venv
+$> .venv
 # or
-$> source venv/bin/activate
+$> source .venv/bin/activate
 
 # deactivate virtual env
 $> deactivate
@@ -25,11 +29,13 @@ $> pip install -r requirements.txt
 ```
 
 #### Running sample API
+
 ```sh
 $> python api_test.py
 ```
 
 #### Building and Running locally
+
 ```sh
 $> PYTHONPATH=. python setup.py install
 $> python app.py
@@ -42,13 +48,16 @@ $> MONGO_DB_PASSWORD=pwd  \
 ```
 
 #### Building and Running Docker
-* Development mode
+
+- Development mode
+
 ```sh
 $> docker build -f Dockerfile.dev --tag sanskrit-utils .
 $> docker run -d -p 5000:5000 --name sanskrit-utils sanskrit-utils
 ```
 
-* Production mode
+- Production mode
+
 ```sh
 $> docker build --tag sanskrit-utils .
 $> docker tag sanskrit-utils:latest sanskrit-utils:v1.0.0
@@ -69,11 +78,12 @@ $> docker run -d --restart on-failure -p 5000:80 --name sanskrit-utils docker.te
 ```
 
 #### Converting Dictionaries
+
 ```sh
 $> MONGO_DB_PASSWORD=pwd  \
     MONGO_DB_HOST=192.168.0.10  \
     MONGO_DB_PORT=3333  \
-    python sanskrit_utils/loaders/SanDicDhatuPataToMongodb.py 
+    python sanskrit_utils/loaders/SanDicDhatuPataToMongodb.py
 
 $> MONGO_DB_PASSWORD=pwd  \
     MONGO_DB_HOST=192.168.0.10  \
@@ -82,14 +92,17 @@ $> MONGO_DB_PASSWORD=pwd  \
 ```
 
 #### API
-* convert text between schemes
+
+- convert text between schemes
+
 ```graphql
 {
-  transliterate(text:"harIS",schemeFrom:SLP1,schemeTo:DEVANAGARI)
+  transliterate(text: "harIS", schemeFrom: SLP1, schemeTo: DEVANAGARI)
 }
 ```
 
-* dictionary search
+- dictionary search
+
 ```graphql
 {
   dictionarySearch(
@@ -113,7 +126,8 @@ $> MONGO_DB_PASSWORD=pwd  \
 }
 ```
 
-* vaakya split
+- vaakya split
+
 ```graphql
 {
   splits(
@@ -124,42 +138,45 @@ $> MONGO_DB_PASSWORD=pwd  \
   )
 }
 ```
-* word joins (sandhi)
+
+- word joins (sandhi)
+
 ```graphql
 {
   joins(
-    words: ["కాలి","దాసస్య"]
-    schemeFrom:TELUGU
+    words: ["కాలి", "దాసస్య"]
+    schemeFrom: TELUGU
     schemeTo: TELUGU
     strictIO: false
   )
 }
 ```
 
-* word tags
+- word tags
+
 ```graphql
 {
-  tags(
-    text:"కాలిదాసస్య"
-    schemeFrom:TELUGU
-    schemeTo:TELUGU
-  ){
+  tags(text: "కాలిదాసస్య", schemeFrom: TELUGU, schemeTo: TELUGU) {
     word
     tags
   }
 }
 ```
 
-* presegmented tags
+- presegmented tags
+
 ```graphql
 {
-  presegmented(text:"దేవదత్తః గ్రామం గచ్ఛతి"
-    schemeFrom:TELUGU
-    schemeTo: TELUGU)
+  presegmented(
+    text: "దేవదత్తః గ్రామం గచ్ఛతి"
+    schemeFrom: TELUGU
+    schemeTo: TELUGU
+  )
 }
 ```
 
-* presegmented parser tags
+- presegmented parser tags
+
 ```graphql
 {
   parse(text: "देवदत्तः ग्रामं गच्छति", schemeTo: TELUGU) {
@@ -182,37 +199,30 @@ $> MONGO_DB_PASSWORD=pwd  \
         sambandha
       }
     }
+  }
 }
 ```
 
 #### Indexes
+
 ```js
-[ 
-  { v: 2, key: { _id: 1 }, name: '_id_' },
-  { v: 2,
-    key: { _fts: 'text', _ftsx: 1 },
-    name: 'fts',
+[
+  { v: 2, key: { _id: 1 }, name: "_id_" },
+  {
+    v: 2,
+    key: { _fts: "text", _ftsx: 1 },
+    name: "fts",
     background: false,
-    weights: { 'desc.slp1': 1, 'word.slp1': 1 },
-    default_language: 'english',
-    language_override: 'language',
-    textIndexVersion: 3 },
-  { v: 2,
-    key: { wordOriginal: 1 },
-    name: 'wordOriginal_1',
-    background: false },
-  { v: 2,
-    key: { 'word.slp1': 1 },
-    name: 'word.slp1_1',
-    background: false },
-  { v: 2,
-    key: { descOriginal: 1 },
-    name: 'descOriginal_1',
-    background: false },
-  { v: 2,
-    key: { 'desc.slp1': 1 },
-    name: 'desc.slp1_1',
-    background: false } 
-]
+    weights: { "desc.slp1": 1, "word.slp1": 1 },
+    default_language: "english",
+    language_override: "language",
+    textIndexVersion: 3,
+  },
+  { v: 2, key: { wordOriginal: 1 }, name: "wordOriginal_1", background: false },
+  { v: 2, key: { "word.slp1": 1 }, name: "word.slp1_1", background: false },
+  { v: 2, key: { descOriginal: 1 }, name: "descOriginal_1", background: false },
+  { v: 2, key: { "desc.slp1": 1 }, name: "desc.slp1_1", background: false },
+];
 ```
+
 #### Issues

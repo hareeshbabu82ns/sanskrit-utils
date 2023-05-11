@@ -1,5 +1,5 @@
 from ariadne import QueryType, graphql_sync, make_executable_schema
-from ariadne.constants import PLAYGROUND_HTML
+from ariadne.explorer import ExplorerGraphiQL
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -12,11 +12,12 @@ CORS(app)
 # app.debug = True
 # app.config['HOST'] = '127.0.0.1'
 # app.config['PORT'] = 5000
+explorer_html = ExplorerGraphiQL().html(None)
 
 
 @app.route("/graphql", methods=["GET"])
 def graphql_playground():
-    return PLAYGROUND_HTML, 200
+    return explorer_html, 200
 
 
 @app.route("/graphql", methods=["POST"])

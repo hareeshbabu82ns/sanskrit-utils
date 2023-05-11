@@ -5,8 +5,9 @@ from sanskrit_utils.schema import query
 from indic_transliteration import sanscript
 from sanskrit_parser import Parser
 from indic_transliteration.sanscript import transliterate
-from sanskrit_parser.base.sanskrit_base import SanskritObject, SanskritNormalizedString, SLP1, SCHEMES as PARSER_SCHEMES
+from sanskrit_parser.base.sanskrit_base import SanskritObject, SanskritNormalizedString
 from sanskrit_parser.parser.sandhi_analyzer import LexicalSandhiAnalyzer
+from indic_transliteration import sanscript
 
 from sanskrit_utils.schema.Sanscript import SanscriptScheme
 
@@ -14,7 +15,7 @@ analyzer = LexicalSandhiAnalyzer()
 parser = Parser()
 
 # reverse key values
-SANS_TO_PARSER_SCHEMES_MAP = {v: k for k, v in PARSER_SCHEMES.items()}
+# SANS_TO_PARSER_SCHEMES_MAP = {v: k for k, v in PARSER_SCHEMES.items()}
 
 
 @query.field("splits")
@@ -82,7 +83,7 @@ def res_q_joins(_, info, words=[], schemeFrom=SanscriptScheme.DEVANAGARI, scheme
 def join_2_words(first_in, second_in, schemeTo=SanscriptScheme.SLP1, strictIO=False):
     joins = analyzer.sandhi.join(first_in, second_in)
     sjoins = [SanskritNormalizedString(
-        join, encoding=SLP1, strict_io=strictIO) for join in list(joins)]
+        join, encoding=sanscript.SLP1, strict_io=strictIO) for join in list(joins)]
     return sjoins
 
 
@@ -181,7 +182,7 @@ def parse_graph(graph):
 def jedge(pred, node, label):
     return (node.pada.devanagari(strict_io=False),
             jtag(node.getMorphologicalTags()),
-            SanskritObject(label, encoding=SLP1).devanagari(strict_io=False),
+            SanskritObject(label, encoding=sanscript.SLP1).devanagari(strict_io=False),
             pred.pada.devanagari(strict_io=False))
 
 
@@ -191,13 +192,13 @@ def jnode(node):
             jtag(node.getMorphologicalTags()), "", "")
 
 
-def jtag(tag, encoding=SLP1, strict_io=False):
+def jtag(tag, encoding=sanscript.SLP1, strict_io=False):
     """ Helper to translate tag to serializable format"""
     return {"word": tag[0].transcoded(encoding, strict_io),
             "tags": [t.transcoded(encoding, strict_io) for t in list(tag[1])]}
 
 
-def jtags(tags, encoding=SLP1, strict_io=False):
+def jtags(tags, encoding=sanscript.SLP1, strict_io=False):
     """ Helper to translate tags to serializable format"""
     return [jtag(x, encoding, strict_io) for x in tags]
 
