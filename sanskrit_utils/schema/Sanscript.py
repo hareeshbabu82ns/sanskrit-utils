@@ -121,6 +121,7 @@ def res_q_dict_search(_, info, searchWith):
     origin = searchWith.get('origin', [])
     outputScheme = searchWith.get('outputScheme', SanscriptScheme.DEVANAGARI)
     limit = searchWith.get('limit', 100)
+    offset = searchWith.get('offset', 0)
 
     requestedOutputFields = [
         node.name.value for node in info.field_nodes[0].selection_set.selections]
@@ -163,7 +164,7 @@ def res_q_dict_search(_, info, searchWith):
     #                     "descOriginal": 1 if 'description' in requestedOutputFields else 0,
     #                     "desc": 1 if 'description' in requestedOutputFields else 0
     #                     }
-    projectionFilter = {"_id": 1, "origin": 1}
+    projectionFilter = { "origin": 1}
     if 'key' in requestedOutputFields:
         projectionFilter["wordOriginal"] = 1
         projectionFilter["word"] = 1
@@ -173,7 +174,8 @@ def res_q_dict_search(_, info, searchWith):
         projectionFilter["desc"] = 1
 
     data = dictEntriesCollection.find(
-        searchFilter, projectionFilter).limit(limit)
+        searchFilter, projectionFilter
+        ).limit(limit).skip(offset*limit).sort('word')
     results = []
     # print([(color.value, color.name) for color in Dictionaries])
     for record in data:
