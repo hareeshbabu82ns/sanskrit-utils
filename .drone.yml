@@ -1,4 +1,5 @@
 kind: pipeline
+type: docker
 name: sanskrit-utils
 
 steps:
@@ -15,10 +16,11 @@ steps:
         from_secret: docker_pass
       SERVER_DOMAIN:
         from_secret: server_domain
+      DRONE_TAG: ${DRONE_TAG}
     commands:
       - docker login -p $DPASS -u $DUSER docker.$SERVER_DOMAIN
-      - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils-api:latest -f Dockerfile .
-      - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils-api:latest
+      - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils-api:${DRONE_TAG=latest} -f Dockerfile .
+      - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils-api:${DRONE_TAG=latest}
     # when:
     #   branch:
     #   - master
