@@ -94,7 +94,7 @@ $> MONGO_DB_PASSWORD=pwd  \
 ##### Running Ansible Playbook from local
 
 - enable line `ansible_ssh_private_key_file: "~/.ssh/id_rsa_hsrv"` in `hosts.yml`
-- run `ansible-playbook playbook.yml --extra-vars "commit_sha=3333"`
+- run `ansible-playbook playbook.yml --extra-vars "commit_sha=3333 git_branch=main git_repo=devhub"`
 
 #### API
 
