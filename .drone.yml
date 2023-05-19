@@ -43,7 +43,7 @@ steps:
       playbook: .ansible/playbook.yml
       # galaxy: .ansible/requirements.yml
       inventory: .ansible/inventory
-      syntax_check: true
+      # syntax_check: true
       private_key:
         from_secret: host_ssh_key
       vault_password:
