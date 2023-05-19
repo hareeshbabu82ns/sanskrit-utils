@@ -126,6 +126,11 @@ def res_q_dict_search(_, info, searchWith):
     requestedOutputFields = [
         node.name.value for node in info.field_nodes[0].selection_set.selections]
 
+    resultsIndex = requestedOutputFields.index('results')
+    requestedResultOutputFields = [
+        node.name.value for node in info.field_nodes[0].
+        selection_set.selections[resultsIndex].selection_set.selections]
+    
     searchFilter = {}
 
     finalSearch = search if searchScheme == SanscriptScheme.SLP1 else transliterate(
@@ -159,23 +164,27 @@ def res_q_dict_search(_, info, searchWith):
         searchFilter['origin']['$in'] = [o.value for o in origin]
 
     # projectionFilter = {"_id": 1,
-    #                     "wordOriginal": 1 if 'key' in requestedOutputFields else 0,
-    #                     "word": 1 if 'key' in requestedOutputFields else 0,
-    #                     "descOriginal": 1 if 'description' in requestedOutputFields else 0,
-    #                     "desc": 1 if 'description' in requestedOutputFields else 0
+    #                     "wordOriginal": 1 if 'key' in requestedResultOutputFields else 0,
+    #                     "word": 1 if 'key' in requestedResultOutputFields else 0,
+    #                     "descOriginal": 1 if 'description' in requestedResultOutputFields else 0,
+    #                     "desc": 1 if 'description' in requestedResultOutputFields else 0
     #                     }
-    projectionFilter = { "origin": 1}
-    if 'key' in requestedOutputFields:
+    projectionFilter = {"origin": 1}
+    if 'key' in requestedResultOutputFields:
         projectionFilter["wordOriginal"] = 1
         projectionFilter["word"] = 1
 
-    if 'description' in requestedOutputFields:
+    if 'description' in requestedResultOutputFields:
         projectionFilter["descOriginal"] = 1
         projectionFilter["desc"] = 1
 
+    dataCount = dictEntriesCollection.count_documents(
+        searchFilter) if 'total' in requestedOutputFields else 0
+    
     data = dictEntriesCollection.find(
         searchFilter, projectionFilter
-        ).limit(limit).skip(offset*limit).sort('word')
+    ).limit(limit).skip(offset*limit).sort('word')
+
     results = []
     # print([(color.value, color.name) for color in Dictionaries])
     for record in data:
@@ -183,14 +192,83 @@ def res_q_dict_search(_, info, searchWith):
         item = {'id': record['_id'],
                 'origin': Dictionaries(record['origin'])}
 
-        if 'key' in requestedOutputFields:
+        if 'key' in requestedResultOutputFields:
             item['key'] = record['word'][outputScheme.value] if record['word'].get(
                 outputScheme.value) else record['wordOriginal']
-        if 'description' in requestedOutputFields:
+        if 'description' in requestedResultOutputFields:
             item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
                 outputScheme.value) else record['descOriginal']
 
         results.append(item)
         # print(item)
         # break
-    return results
+
+    browseData = {"total": dataCount, "results": results}
+    return browseData
+
+
+@query.field("dictionaryBrowse")
+def res_q_dict_browse(_, info, browseWith):
+    origin = browseWith.get('origin', Dictionaries.VCP)
+    outputScheme = browseWith.get('outputScheme', SanscriptScheme.DEVANAGARI)
+    limit = browseWith.get('limit', 100)
+    offset = browseWith.get('offset', 0)
+
+    requestedOutputFields = [
+        node.name.value for node in info.field_nodes[0].selection_set.selections]
+
+    resultsIndex = requestedOutputFields.index('results')
+    requestedResultOutputFields = [
+        node.name.value for node in info.field_nodes[0].
+        selection_set.selections[resultsIndex].selection_set.selections]
+
+    # print(
+    #     info.field_nodes[0].selection_set.selections[1].selection_set.selections)
+    # print(requestedResultOutputFields)
+
+    searchFilter = {}
+    searchFilter['origin'] = origin.value
+
+    # print(searchFilter)
+    # projectionFilter = {"_id": 1,
+    #                     "wordOriginal": 1 if 'key' in requestedOutputFields else 0,
+    #                     "word": 1 if 'key' in requestedOutputFields else 0,
+    #                     "descOriginal": 1 if 'description' in requestedOutputFields else 0,
+    #                     "desc": 1 if 'description' in requestedOutputFields else 0
+    #                     }
+    projectionFilter = {'_id': 1, 'origin': 1}
+    if 'key' in requestedResultOutputFields:
+        projectionFilter["wordOriginal"] = 1
+        projectionFilter["word"] = 1
+
+    if 'description' in requestedResultOutputFields:
+        projectionFilter["descOriginal"] = 1
+        projectionFilter["desc"] = 1
+
+    dataCount = dictEntriesCollection.count_documents(
+        searchFilter) if 'total' in requestedOutputFields else 0
+
+    data = dictEntriesCollection.find(
+        searchFilter, projectionFilter
+    ).limit(limit).skip(offset*limit).sort('word') if 'results' in requestedOutputFields else []
+
+    results = []
+    # print([(color.value, color.name) for color in Dictionaries])
+    for record in data:
+        # print(record)
+        item = {'id': record['_id'],
+                'origin': Dictionaries(record['origin'])}
+
+        if 'key' in requestedResultOutputFields:
+            item['key'] = record['word'][outputScheme.value] if record['word'].get(
+                outputScheme.value) else record['wordOriginal']
+        if 'description' in requestedResultOutputFields:
+            item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
+                outputScheme.value) else record['descOriginal']
+
+        results.append(item)
+        # print(item)
+        # break
+
+    browseData = {"total": dataCount, "results": results}
+    return browseData

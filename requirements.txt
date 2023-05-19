@@ -14,3 +14,5 @@ flask-cors==3.0.10
 sanskrit-parser==0.2.6
 sanskrit-util==0.1.2
 autopep8==2.0.2
+gensim==4.3.1
+sentencepiece==0.1.99

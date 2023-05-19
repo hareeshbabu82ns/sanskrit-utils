@@ -121,12 +121,34 @@ $> MONGO_DB_PASSWORD=pwd  \
       origin: [VCP]
       outputScheme: TELUGU
       limit: 10
+      offset: 2
     }
   ) {
-    id
-    key
-    description
-    origin
+    total
+    results {
+      id
+      key
+      description
+      origin
+    }
+  }
+}
+```
+
+- dictionary Browse
+
+```graphql
+{
+  dictionaryBrowse(
+    searchWith: { origin: VCP, outputScheme: TELUGU, limit: 10, offset: 2 }
+  ) {
+    total
+    results {
+      id
+      key
+      description
+      origin
+    }
   }
 }
 ```
