@@ -1,5 +1,5 @@
 app_port: 80
-app_name: "sanskrit-utils-api"
+app_name: "sanskrit-utils-api"  # disable this line if app_name is synched with branch name
 app_fqdn: "{{app_name}}.kube.{{server_domain}}"
 app_image_version: "latest"
 app_image_name: "{{docker_domain}}.{{server_domain}}/home/{{app_name}}:{{app_image_version}}"

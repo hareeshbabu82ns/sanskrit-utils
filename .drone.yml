@@ -17,10 +17,16 @@ steps:
       SERVER_DOMAIN:
         from_secret: server_domain
       DRONE_TAG: ${DRONE_TAG}
+      REPO_NAME: ${DRONE_REPO_NAME/\//-}
+      REPO_BRANCH: ${DRONE_BRANCH/\//-}      
     commands:
-      - docker login -p $DPASS -u $DUSER docker.$SERVER_DOMAIN
-      - docker build --no-cache -t docker.$SERVER_DOMAIN/home/sanskrit-utils-api:${DRONE_TAG=latest} -f Dockerfile .
-      - docker push docker.$SERVER_DOMAIN/home/sanskrit-utils-api:${DRONE_TAG=latest}
+      - APP_NAME=$([[ "$REPO_BRANCH" == "master" || "$REPO_BRANCH" == "main" ]] && echo "$REPO_NAME" || echo "$REPO_BRANCH")
+      - echo $REPO_NAME - $APP_NAME - $DRONE_TAG
+      # - env
+      # - docker login -p $DPASS -u $DUSER docker.$SERVER_DOMAIN
+      - echo $DPASS | docker login docker.$SERVER_DOMAIN -u $DUSER --password-stdin
+      - docker build --no-cache -t docker.$SERVER_DOMAIN/home/$APP_NAME:$DRONE_TAG -f Dockerfile . 
+      - docker push docker.$SERVER_DOMAIN/home/$APP_NAME:$DRONE_TAG
     # when:
     #   branch:
     #   - master
@@ -42,7 +48,7 @@ steps:
         from_secret: host_ssh_key
       vault_password:
         from_secret: ansible_vault_pass
-      extra_vars: git_tag=${DRONE_TAG},commit_sha=${DRONE_COMMIT_SHA}
+      extra_vars: git_repo=${DRONE_REPO_NAME/\//-},git_tag=${DRONE_TAG=latest},git_branch=${DRONE_BRANCH/\//-},commit_sha=${DRONE_COMMIT_SHA}
     # when:
     #   branch:
     #   - master

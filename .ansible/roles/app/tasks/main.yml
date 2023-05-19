@@ -3,6 +3,20 @@
   set_fact:
     img_tag: "{{ git_tag | default('latest') }}"
 
+- name: AppName from Extra Vars
+  set_fact:
+    app_name: "{{ git_repo }}"
+  when: (git_branch is not defined) or (git_branch|length == 0) or (git_branch == "master") or (git_branch == "main")
+
+- name: AppName from Extra Vars
+  set_fact:
+    app_name: "{{ git_branch }}"
+  when: (app_name is not defined) or (app_name|length == 0)
+
+- name: App Name
+  debug:
+    var: app_name
+    
 - name: Check GitTag
   set_fact:
     img_tag: latest
