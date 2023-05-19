@@ -16,9 +16,9 @@ steps:
         from_secret: docker_pass
       SERVER_DOMAIN:
         from_secret: server_domain
-      DRONE_TAG: ${DRONE_TAG}
+      DRONE_TAG: ${DRONE_TAG=latest}
       REPO_NAME: ${DRONE_REPO_NAME/\//-}
-      REPO_BRANCH: ${DRONE_BRANCH/\//-}      
+      REPO_BRANCH: ${DRONE_BRANCH/\//-}
     commands:
       - APP_NAME=$([[ "$REPO_BRANCH" == "master" || "$REPO_BRANCH" == "main" ]] && echo "$REPO_NAME" || echo "$REPO_BRANCH")
       - echo $REPO_NAME - $APP_NAME - $DRONE_TAG
