@@ -91,6 +91,17 @@ $> MONGO_DB_PASSWORD=pwd  \
     python sanskrit_utils/loaders/LexiconDicToMongodb.py
 ```
 
+#### Inital Setup
+
+- sets up indexes
+
+```sh
+$> MONGO_DB_PASSWORD=sansutils \
+ MONGO_DB_HOST=192.168.0.10 \
+ MONGO_DB_PORT=3333 \
+ python sanskrit_utils/loaders/SetupMongoDb.py
+```
+
 ##### Running Ansible Playbook from local
 
 - enable line `ansible_ssh_private_key_file: "~/.ssh/id_rsa_hsrv"` in `hosts.yml`
@@ -245,6 +256,7 @@ $> MONGO_DB_PASSWORD=pwd  \
     language_override: "language",
     textIndexVersion: 3,
   },
+  { v: 2, key: { origin: 1, word: 1 }, name: "dict_browse", background: false },
   { v: 2, key: { wordOriginal: 1 }, name: "wordOriginal_1", background: false },
   { v: 2, key: { "word.slp1": 1 }, name: "word.slp1_1", background: false },
   { v: 2, key: { descOriginal: 1 }, name: "descOriginal_1", background: false },

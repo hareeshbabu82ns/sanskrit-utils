@@ -126,10 +126,15 @@ def res_q_dict_search(_, info, searchWith):
     requestedOutputFields = [
         node.name.value for node in info.field_nodes[0].selection_set.selections]
 
-    resultsIndex = requestedOutputFields.index('results')
+    resultsIndex = -1
+    try:
+        resultsIndex = requestedOutputFields.index('results')
+    except:
+        resultsIndex = -1
+
     requestedResultOutputFields = [
         node.name.value for node in info.field_nodes[0].
-        selection_set.selections[resultsIndex].selection_set.selections]
+        selection_set.selections[resultsIndex].selection_set.selections] if resultsIndex >= 0 else []
     
     searchFilter = {}
 
@@ -147,7 +152,7 @@ def res_q_dict_search(_, info, searchWith):
         if caseInsensitive:
             regexOptions = 'i'
 
-        print(finalSearch)
+        # print(finalSearch)
         searchRegex = {'$regex': finalSearch, '$options': regexOptions}
         searchFilter = []
         searchFilter.append({'wordOriginal': searchRegex})
@@ -157,7 +162,7 @@ def res_q_dict_search(_, info, searchWith):
             searchFilter.append({f'desc.{sanscript.SLP1}': searchRegex})
         searchFilter = {'$or': searchFilter}
 
-    print(searchFilter)
+    # print(searchFilter)
 
     if len(origin) > 0:
         searchFilter['origin'] = {}
@@ -217,25 +222,19 @@ def res_q_dict_browse(_, info, browseWith):
     requestedOutputFields = [
         node.name.value for node in info.field_nodes[0].selection_set.selections]
 
-    resultsIndex = requestedOutputFields.index('results')
+    resultsIndex = -1
+    try:
+        resultsIndex = requestedOutputFields.index('results')
+    except:
+        resultsIndex = -1
+
     requestedResultOutputFields = [
         node.name.value for node in info.field_nodes[0].
-        selection_set.selections[resultsIndex].selection_set.selections]
-
-    # print(
-    #     info.field_nodes[0].selection_set.selections[1].selection_set.selections)
-    # print(requestedResultOutputFields)
+        selection_set.selections[resultsIndex].selection_set.selections] if resultsIndex >= 0 else []
 
     searchFilter = {}
     searchFilter['origin'] = origin.value
 
-    # print(searchFilter)
-    # projectionFilter = {"_id": 1,
-    #                     "wordOriginal": 1 if 'key' in requestedOutputFields else 0,
-    #                     "word": 1 if 'key' in requestedOutputFields else 0,
-    #                     "descOriginal": 1 if 'description' in requestedOutputFields else 0,
-    #                     "desc": 1 if 'description' in requestedOutputFields else 0
-    #                     }
     projectionFilter = {'_id': 1, 'origin': 1}
     if 'key' in requestedResultOutputFields:
         projectionFilter["wordOriginal"] = 1
@@ -251,6 +250,8 @@ def res_q_dict_browse(_, info, browseWith):
     data = dictEntriesCollection.find(
         searchFilter, projectionFilter
     ).limit(limit).skip(offset*limit).sort('word') if 'results' in requestedOutputFields else []
+
+    # data = dictEntriesCollection.find().limit(limit) if 'results' in requestedOutputFields else []
 
     results = []
     # print([(color.value, color.name) for color in Dictionaries])

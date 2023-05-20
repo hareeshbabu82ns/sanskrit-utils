@@ -66,5 +66,9 @@ fts = IndexModel([
 ], name="word-desc-fts", background=True)
 indexes.append(fts)
 
+dictBrowse = IndexModel([("origin", ASCENDING), ("word", ASCENDING)],
+                     name="dict-browse", background=True)
+indexes.append(dictBrowse)
+
 dictEntriesCollection.drop_indexes()
 dictEntriesCollection.create_indexes(indexes)
