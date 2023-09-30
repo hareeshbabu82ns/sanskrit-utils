@@ -21,3 +21,5 @@ mongodbClient = pymongo.MongoClient(mdbUrl, connect=False)
 dbConnection = mongodbClient[mdbDB]
 
 dictEntriesCollection = dbConnection["dictEntries"]
+
+dictPhoneticsEntriesCollection = dbConnection["dictPhonetics"]

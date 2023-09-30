@@ -8,6 +8,8 @@ extend type Query {
     schemeTo: SanscriptScheme
   ): String!
 
+  phoneticWordSearch(searchWith: PhoneticWordSearchInput!): PhoneticWordResults!
+
   dictionaryBrowse(browseWith: DictionaryBrowseInput!): DictionaryResults!
 
   dictionarySearch(searchWith: DictionarySearchInput!): DictionaryResults!
@@ -84,6 +86,40 @@ type DictionaryItem {
 type DictionaryKey {
   key: String!
   origin: Dictionary!
+}
+
+type PhoneticWord {
+  key: ID!
+  word: String!
+}
+
+input PhoneticWordSearchInput {
+  search: String!
+  """
+  Search String scheme (default: SLP1)
+  """
+  searchScheme: SanscriptScheme = SLP1
+
+  caseInsensitive: Boolean = false
+  """
+  searches where the input is at starting position
+  """
+  startsWith: Boolean = true
+  """
+  searches where the input is at ending position
+  """
+  endsWith: Boolean = false
+  """
+  scheme for output (default: SLP1)
+  """
+  outputScheme: SanscriptScheme = SLP1
+  limit: Int = 20
+  offset: Int = 0
+}
+
+type PhoneticWordResults {
+  total: Int!
+  results: [PhoneticWord!]
 }
 
 """

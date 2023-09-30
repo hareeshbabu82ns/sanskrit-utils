@@ -1,10 +1,10 @@
 from sanskrit_parser import Parser
 
-from sanskrit_parser.base.sanskrit_base import SCHEMES
-from sanskrit_parser.base.sanskrit_base import SanskritObject, SanskritNormalizedString, SLP1, TELUGU, SCHEMES as PARSER_SCHEMES
+from indic_transliteration.sanscript import SchemeMap, SLP1, TELUGU
+from sanskrit_parser.base.sanskrit_base import SanskritObject, SanskritNormalizedString
 from sanskrit_parser.parser.sandhi_analyzer import LexicalSandhiAnalyzer
 
-SANS_TO_PARSER_SCHEMES_MAP = {v: k for k, v in PARSER_SCHEMES.items()}
+# SANS_TO_PARSER_SCHEMES_MAP = {v: k for k, v in PARSER_SCHEMES.items()}
 # print(SCHEMES)
 # print(SANS_TO_PARSER_SCHEMES_MAP)
 

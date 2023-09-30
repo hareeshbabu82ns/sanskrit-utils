@@ -6,7 +6,7 @@ from sanskrit_utils.schema import query
 from indic_transliteration import sanscript
 from indic_transliteration.sanscript import SchemeMap, SCHEMES, transliterate
 
-from sanskrit_utils.database import dictEntriesCollection
+from sanskrit_utils.database import dictEntriesCollection, dictPhoneticsEntriesCollection
 # from sanskrit_utils.database import mongodbClient, mdbDB
 
 dictionaryItem = ObjectType('DictionaryItem')
@@ -109,6 +109,73 @@ def res_q_dict_item_by_id(_, info, id, outputScheme=SanscriptScheme.DEVANAGARI):
     return item
 
 
+@query.field("phoneticWordSearch")
+def res_q_phonetic_search(_, info, searchWith):
+    search = searchWith['search']
+    searchScheme = searchWith.get('searchScheme', SanscriptScheme.SLP1)
+    caseInsensitive = searchWith.get('caseInsensitive', False)
+    startsWith = searchWith.get('startsWith', True)
+    endsWith = searchWith.get('endsWith', False)
+    outputScheme = searchWith.get('outputScheme', SanscriptScheme.SLP1)
+    limit = searchWith.get('limit', 20)
+    offset = searchWith.get('offset', 0)
+
+    requestedOutputFields = [
+        node.name.value for node in info.field_nodes[0].selection_set.selections]
+
+    resultsIndex = -1
+    try:
+        resultsIndex = requestedOutputFields.index('results')
+    except:
+        resultsIndex = -1
+
+    requestedResultOutputFields = [
+        node.name.value for node in info.field_nodes[0].
+        selection_set.selections[resultsIndex].selection_set.selections] if resultsIndex >= 0 else []
+
+    searchFilter = {}
+
+    finalSearch = search if searchScheme == SanscriptScheme.SLP1 else transliterate(
+        search, searchScheme.value, sanscript.SLP1)
+
+    if startsWith:
+        finalSearch = '^' + finalSearch
+    if endsWith:
+        finalSearch = finalSearch + '$'
+    regexOptions = ''
+    if caseInsensitive:
+        regexOptions = 'i'
+
+    # print(finalSearch)
+    searchRegex = {'$regex': finalSearch, '$options': regexOptions}
+    searchFilter = {'_id': searchRegex}
+
+    dataCount = dictPhoneticsEntriesCollection.count_documents(
+        searchFilter) if 'total' in requestedOutputFields else 0
+
+    data = dictPhoneticsEntriesCollection.find(
+        searchFilter).limit(limit).skip(offset*limit).sort('word')
+
+    results = []
+    # print([(color.value, color.name) for color in Dictionaries])
+    for record in data:
+        # print(record)
+        item = {'id': record['_id']}
+
+        if 'key' in requestedResultOutputFields:
+            item['key'] = record['_id']
+        if 'word' in requestedResultOutputFields:
+            item['word'] = record['word'] if outputScheme == SanscriptScheme.SLP1 else transliterate(
+                record['word'], SanscriptScheme.SLP1.value, outputScheme.value)
+
+        results.append(item)
+        # print(item)
+        # break
+
+    searchData = {"total": dataCount, "results": results}
+    return searchData
+
+
 @query.field("dictionarySearch")
 def res_q_dict_search(_, info, searchWith):
     search = searchWith['search']
@@ -135,7 +202,7 @@ def res_q_dict_search(_, info, searchWith):
     requestedResultOutputFields = [
         node.name.value for node in info.field_nodes[0].
         selection_set.selections[resultsIndex].selection_set.selections] if resultsIndex >= 0 else []
-    
+
     searchFilter = {}
 
     finalSearch = search if searchScheme == SanscriptScheme.SLP1 else transliterate(
@@ -185,7 +252,7 @@ def res_q_dict_search(_, info, searchWith):
 
     dataCount = dictEntriesCollection.count_documents(
         searchFilter) if 'total' in requestedOutputFields else 0
-    
+
     data = dictEntriesCollection.find(
         searchFilter, projectionFilter
     ).limit(limit).skip(offset*limit).sort('word')
