@@ -22,6 +22,26 @@ extend type Query {
   ): DictionaryItem!
 }
 
+extend type Mutation {
+  createDictionaryItem(withData: [DictionaryItemInput!]!): [ID!]!
+  updateDictionaryItem(id: ID!, withData: DictionaryItemInput!): ID!
+  deleteDictionaryItem(id: ID!): ID!
+}
+
+input DictionaryItemInput {
+  wordIndex: Int
+  word: String
+  description: String
+  wordTranslations: [DictionaryItemLanguageInput!]
+  descriptionTranslations: [DictionaryItemLanguageInput!]
+  origin: Dictionary
+}
+
+input DictionaryItemLanguageInput {
+  language: SanscriptScheme!
+  value: String!
+}
+
 type DictionaryResults {
   total: Int!
   results: [DictionaryItem!]
@@ -254,6 +274,8 @@ enum Dictionary {
   1993	Mahabharata Cultural Index
   """
   MCI
+
+  OTHERS
 }
 
 """
@@ -279,4 +301,5 @@ enum SanscriptScheme {
   TELUGU
   TAMIL
   KANNADA
+  ENGLISH
 }

@@ -2,7 +2,8 @@ import enum
 import pymongo
 from bson.objectid import ObjectId
 from ariadne import EnumType, ObjectType
-from sanskrit_utils.schema import query
+from graphql import GraphQLError
+from sanskrit_utils.schema import query, mutation
 from indic_transliteration import sanscript
 from indic_transliteration.sanscript import SchemeMap, SCHEMES, transliterate
 
@@ -30,6 +31,7 @@ class SanscriptScheme(enum.Enum):
     TELUGU = sanscript.TELUGU
     TAMIL = sanscript.TAMIL
     KANNADA = sanscript.KANNADA
+    ENGLISH = 'english'
 
 
 sanscriptSchemesEnum = EnumType("SanscriptScheme", SanscriptScheme)
@@ -76,8 +78,102 @@ class Dictionaries(enum.Enum):
     PGN = 'pgn'  # 1978	Personal and Geographical Names in the Gupta Inscriptions
     MCI = 'mci'  # 1993	Mahabharata Cultural Index
 
+    OTHERS = 'others'  # any other generic entries
+
 
 dictionaryEnum = EnumType("Dictionary", Dictionaries)
+
+
+def prepare_dict_item_from_input(withData, update=False):
+    word_original = withData.get('word')
+    desc_original = withData.get('description')
+
+    word_translations = withData.get('wordTranslations')
+    desc_translations = withData.get('descriptionTranslations')
+
+    word_dict = {}
+    if word_translations is not None and isinstance(word_translations, list):
+        for item in word_translations:
+            word_dict[SanscriptScheme(item['language']).value] = item['value']
+        if word_original is None and len(word_translations) > 0:
+            word_original = word_translations.pop(0).get('value')
+    if word_original is None:
+        word_original = ''
+
+    desc_dict = {}
+    if desc_translations is not None and isinstance(desc_translations, list):
+        for item in desc_translations:
+            desc_dict[SanscriptScheme(item['language']).value] = item['value']
+        if desc_original is None and len(desc_translations) > 0:
+            desc_original = desc_translations.pop(0).get('value')
+    if desc_original is None:
+        desc_original = ''
+
+    origin = withData.get('origin')
+    origin = Dictionaries(
+        origin).value if origin is not None else Dictionaries.OTHERS.value
+
+    transformed_data = {}
+    if (update):
+        if withData.get('wordIndex') is not None:
+            transformed_data['wordIndex'] = withData['wordIndex']
+        if withData.get('origin') is not None:
+            transformed_data['origin'] = Dictionaries(origin).value
+        if withData.get('word') is not None:
+            transformed_data['wordOriginal'] = word_original,
+        if withData.get('description') is not None:
+            transformed_data['descOriginal'] = desc_original,
+        if len(word_dict.items()) is not 0:
+            transformed_data.update({'word': word_dict})
+        if len(desc_dict.items()) is not 0:
+            transformed_data.update({'desc': desc_dict}),
+    else:
+        transformed_data = {
+            'wordIndex': withData['wordIndex'] if withData.get('wordIndex') is not None else 0,
+            'wordOriginal': word_original,
+            'descOriginal': desc_original,
+            'word': word_dict,
+            'desc': desc_dict,
+            'origin': origin
+        }
+
+    return transformed_data
+
+
+@mutation.field('createDictionaryItem')
+def res_m_create_dict_item(_, info, withData):
+
+    transformed_data_arr = []
+
+    for data in withData:
+        transformed_data = prepare_dict_item_from_input(data)
+        transformed_data_arr.append(transformed_data)
+
+    result = dictEntriesCollection.insert_many(transformed_data_arr)
+    return result.inserted_ids
+
+
+@mutation.field('updateDictionaryItem')
+def res_m_update_dict_item(_, info, id, withData):
+    transformed_data = prepare_dict_item_from_input(withData, update=True)
+
+    update_operation = {'$set': transformed_data}
+    result = dictEntriesCollection.update_one(
+        {'_id': ObjectId(id)}, update_operation)
+
+    if result.modified_count != 1:
+        raise GraphQLError("No Dictionary Item found")
+
+    return id
+
+
+@mutation.field('deleteDictionaryItem')
+def res_m_delete_dict_item(_, info, id):
+    res = dictEntriesCollection.delete_one({'_id': ObjectId(id)})
+    if res.deleted_count == 0:
+        raise GraphQLError("No Dictionary Item found")
+
+    return res.deleted_count
 
 
 @query.field("transliterate")
