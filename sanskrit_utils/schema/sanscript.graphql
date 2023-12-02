@@ -42,6 +42,11 @@ input DictionaryItemLanguageInput {
   value: String!
 }
 
+type DictionaryItemLanguageOutput {
+  language: SanscriptScheme
+  value: String
+}
+
 type DictionaryResults {
   total: Int!
   results: [DictionaryItem!]
@@ -97,10 +102,13 @@ input DictionarySearchInput {
 
 type DictionaryItem {
   id: ID!
+  wordIndex: Int
   key: String!
   # key(scheme: SanscriptScheme): String!
   description: String
   origin: Dictionary!
+  wordTranslations: [DictionaryItemLanguageOutput!]
+  descriptionTranslations: [DictionaryItemLanguageOutput!]
 }
 
 type DictionaryKey {

@@ -192,6 +192,9 @@ def res_q_transliterate(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI, sc
 @query.field("dictionarySearchById")
 def res_q_dict_item_by_id(_, info, id, outputScheme=SanscriptScheme.DEVANAGARI):
 
+    requested_fields = [
+        s.name.value for s in info.field_nodes[0].selection_set.selections]
+
     record = dictEntriesCollection.find_one(ObjectId(id))
     item = {'id': record['_id'],
             'origin': Dictionaries(record['origin'])}
@@ -201,6 +204,17 @@ def res_q_dict_item_by_id(_, info, id, outputScheme=SanscriptScheme.DEVANAGARI):
 
     item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
         outputScheme.value) else record['descOriginal']
+
+    if "wordIndex" in requested_fields:
+        item['wordIndex'] = record.get('wordIndex')
+
+    if "wordTranslations" in requested_fields:
+        item['wordTranslations'] = [
+            {'language': SanscriptScheme(key), 'value': value} for key, value in record.get('word').items()]
+
+    if "descriptionTranslations" in requested_fields:
+        item['descriptionTranslations'] = [
+            {'language': SanscriptScheme(key), 'value': value} for key, value in record.get('desc').items()]
 
     return item
 
@@ -337,12 +351,12 @@ def res_q_dict_search(_, info, searchWith):
     #                     "descOriginal": 1 if 'description' in requestedResultOutputFields else 0,
     #                     "desc": 1 if 'description' in requestedResultOutputFields else 0
     #                     }
-    projectionFilter = {"origin": 1}
-    if 'key' in requestedResultOutputFields:
+    projectionFilter = {"origin": 1, "wordIndex": 1}
+    if 'key' in requestedResultOutputFields or 'wordTranslations' in requestedResultOutputFields:
         projectionFilter["wordOriginal"] = 1
         projectionFilter["word"] = 1
 
-    if 'description' in requestedResultOutputFields:
+    if 'description' in requestedResultOutputFields or 'descriptionTranslations' in requestedResultOutputFields:
         projectionFilter["descOriginal"] = 1
         projectionFilter["desc"] = 1
 
@@ -363,13 +377,23 @@ def res_q_dict_search(_, info, searchWith):
         if 'key' in requestedResultOutputFields:
             item['key'] = record['word'][outputScheme.value] if record['word'].get(
                 outputScheme.value) else record['wordOriginal']
+
         if 'description' in requestedResultOutputFields:
             item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
                 outputScheme.value) else record['descOriginal']
 
+        if "wordIndex" in requestedResultOutputFields:
+            item['wordIndex'] = record.get('wordIndex')
+
+        if "wordTranslations" in requestedResultOutputFields:
+            item['wordTranslations'] = [
+                {'language': SanscriptScheme(key), 'value': value} for key, value in record.get('word').items()]
+
+        if "descriptionTranslations" in requestedResultOutputFields:
+            item['descriptionTranslations'] = [
+                {'language': SanscriptScheme(key), 'value': value} for key, value in record.get('desc').items()]
+
         results.append(item)
-        # print(item)
-        # break
 
     browseData = {"total": dataCount, "results": results}
     return browseData
