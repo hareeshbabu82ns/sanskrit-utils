@@ -106,6 +106,8 @@ type DictionaryItem {
   key: String!
   # key(scheme: SanscriptScheme): String!
   description: String
+  wordOriginal: String
+  descriptionOriginal: String
   origin: Dictionary!
   wordTranslations: [DictionaryItemLanguageOutput!]
   descriptionTranslations: [DictionaryItemLanguageOutput!]

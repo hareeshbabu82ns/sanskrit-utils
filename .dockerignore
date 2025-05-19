@@ -1,5 +1,7 @@
 **/node_modules
 venv
+.venv
 **/__pycache__
 vault.pass
 tmp
+*.egg-info

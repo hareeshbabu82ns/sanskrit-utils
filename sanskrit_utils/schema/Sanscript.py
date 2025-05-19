@@ -120,13 +120,13 @@ def prepare_dict_item_from_input(withData, update=False):
         if withData.get('origin') is not None:
             transformed_data['origin'] = Dictionaries(origin).value
         if withData.get('word') is not None:
-            transformed_data['wordOriginal'] = word_original,
+            transformed_data['wordOriginal'] = word_original
         if withData.get('description') is not None:
-            transformed_data['descOriginal'] = desc_original,
+            transformed_data['descOriginal'] = desc_original
         if len(word_dict.items()) is not 0:
             transformed_data.update({'word': word_dict})
         if len(desc_dict.items()) is not 0:
-            transformed_data.update({'desc': desc_dict}),
+            transformed_data.update({'desc': desc_dict})
     else:
         transformed_data = {
             'wordIndex': withData['wordIndex'] if withData.get('wordIndex') is not None else 0,
@@ -137,6 +137,7 @@ def prepare_dict_item_from_input(withData, update=False):
             'origin': origin
         }
 
+    print(transformed_data)
     return transformed_data
 
 
@@ -204,6 +205,12 @@ def res_q_dict_item_by_id(_, info, id, outputScheme=SanscriptScheme.DEVANAGARI):
 
     item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
         outputScheme.value) else record['descOriginal']
+
+    if "wordOriginal" in requested_fields:
+        item['wordOriginal'] = record.get('wordOriginal')
+
+    if "descriptionOriginal" in requested_fields:
+        item['descriptionOriginal'] = record.get('descOriginal')
 
     if "wordIndex" in requested_fields:
         item['wordIndex'] = record.get('wordIndex')
@@ -381,6 +388,12 @@ def res_q_dict_search(_, info, searchWith):
         if 'description' in requestedResultOutputFields:
             item['description'] = record['desc'][outputScheme.value] if record['desc'].get(
                 outputScheme.value) else record['descOriginal']
+
+        if "wordOriginal" in requestedResultOutputFields:
+            item['wordOriginal'] = record.get('wordOriginal')
+
+        if "descriptionOriginal" in requestedResultOutputFields:
+            item['descriptionOriginal'] = record.get('descOriginal')
 
         if "wordIndex" in requestedResultOutputFields:
             item['wordIndex'] = record.get('wordIndex')
