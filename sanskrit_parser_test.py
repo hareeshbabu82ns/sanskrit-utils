@@ -1,6 +1,6 @@
 from sanskrit_parser import Parser
 
-from indic_transliteration.sanscript import SchemeMap, SLP1, TELUGU
+from indic_transliteration.sanscript import SchemeMap, IAST, DEVANAGARI, SLP1, TELUGU
 from sanskrit_parser.base.sanskrit_base import SanskritObject, SanskritNormalizedString
 from sanskrit_parser.parser.sandhi_analyzer import LexicalSandhiAnalyzer
 
@@ -10,19 +10,30 @@ from sanskrit_parser.parser.sandhi_analyzer import LexicalSandhiAnalyzer
 
 analyzer = LexicalSandhiAnalyzer()
 
-# """Splits with analyzer"""
-# text = 'कालिदासस्य जीवनवृत्तिविषये अनेकाः लोकविश्रुतयः अनेके वादाः च सन्ति'
-# vobj = SanskritObject(text, strict_io=False,
-#                       replace_ending_visarga=None)
-# g = analyzer.getSandhiSplits(vobj)
-# if g:
-#     splits = g.find_all_paths(10)
-#     [[print(type(ss)) for ss in s] for s in splits]
-#     jsplits = [[ss.devanagari(strict_io=False)
-#                 for ss in s] for s in splits]
-# else:
-#     jsplits = []
+"""Splits with analyzer"""
+text = 'tapaḥsvādhyāyanirataṃ tapasvī vāgvidāṃ varam'
+vobj = SanskritObject(text, encoding=IAST, strict_io=False,
+                      replace_ending_visarga=None)
+graphs = analyzer.getSandhiSplits(vobj, tag=True, pre_segmented=False)
+if graphs:
+    splits = graphs.find_all_paths(2)
+    print(splits)
+    # [[print(type(ss)) for ss in s] for s in splits]
+    # jsplits = [[ss
+    #             for ss in s] for s in splits]
+    # jsplits = [[ss.devanagari(strict_io=False)
+    #             for ss in s] for s in splits]
+    jsplits = [[ss.transcoded(TELUGU, strict_io=False)
+                for ss in s] for s in splits]
+    tags = analyzer.tagSandhiGraph(graphs)
+    # jtags = [[ss.transcoded(TELUGU, strict_io=False)
+    #           for ss in s] for s in tags]
+    print(tags)
+else:
+    jsplits = []
+    jtags = []
 # print(jsplits)
+# print(jtags)
 
 
 # """Splits with Parser"""
@@ -65,27 +76,27 @@ analyzer = LexicalSandhiAnalyzer()
 # print(sjoins)
 
 
-""" Parse a presegmented sentence """
-parser = Parser()
-text = "देवदत्तः ग्रामं गच्छति"
-limit = 10
-# vobj = SanskritObject(text, strict_io=strictIO, replace_ending_visarga=None)
-# parser = Parser(input_encoding=SANS_TO_PARSER_SCHEMES_MAP[schemeFrom.value],
-#                 output_encoding=SANS_TO_PARSER_SCHEMES_MAP[schemeTo.value],
-#                 replace_ending_visarga='s')
-parser.strict_io = False
-parser.input_encoding = 'devanagari'
-parser.output_encoding = 'telugu'
-mres = []
-for split in parser.split(text, limit=limit, pre_segmented=True):
-    parses = list(split.parse(limit=limit))
-    # print(parses)
-    sdot = split.to_dot()
-    # [print(x.serializable()) for x in parses]
-    mres = [x.serializable() for x in parses]
-    pdots = [x.to_dot() for x in parses]
+# """ Parse a presegmented sentence """
+# parser = Parser()
+# text = "देवदत्तः ग्रामं गच्छति"
+# limit = 10
+# # vobj = SanskritObject(text, strict_io=strictIO, replace_ending_visarga=None)
+# # parser = Parser(input_encoding=SANS_TO_PARSER_SCHEMES_MAP[schemeFrom.value],
+# #                 output_encoding=SANS_TO_PARSER_SCHEMES_MAP[schemeTo.value],
+# #                 replace_ending_visarga='s')
+# parser.strict_io = False
+# parser.input_encoding = 'devanagari'
+# parser.output_encoding = 'telugu'
+# mres = []
+# for split in parser.split(text, limit=limit, pre_segmented=True):
+#     parses = list(split.parse(limit=limit))
+#     # print(parses)
+#     sdot = split.to_dot()
+#     # [print(x.serializable()) for x in parses]
+#     mres = [x.serializable() for x in parses]
+#     pdots = [x.to_dot() for x in parses]
 
-r = {"analysis": mres,
-     "splitDot": sdot,
-     "parseDots": pdots}
-print(r["analysis"])
+# r = {"analysis": mres,
+#      "splitDot": sdot,
+#      "parseDots": pdots}
+# print(r["analysis"])

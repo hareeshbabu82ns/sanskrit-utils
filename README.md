@@ -5,6 +5,19 @@ Contains Utilities to help learning Samskrutam
 - **sanskrit_parser** is helpful in splitting and adding the words
 - **dictionaries** is an interface for various dictionories
 
+#### submitting with git tag
+
+```sh
+# Increment patch version (vX.X.X+1)
+./tag_version.py patch
+
+# Increment minor version (vX.X+1.0)
+./tag_version.py minor
+
+# Increment major version (vX+1.0.0)
+./tag_version.py major
+```
+
 #### Setting up for Development
 
 ```sh

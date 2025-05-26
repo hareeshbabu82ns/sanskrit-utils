@@ -139,8 +139,13 @@ def res_q_parse(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI,
     parser.output_encoding = schemeTo.value
 
     r = []
+    splits = parser.split(text, limit=limit, pre_segmented=preSegmented)
+    # print(splits)
 
-    for split in parser.split(text, limit=limit, pre_segmented=preSegmented):
+    if splits is None:
+        return []
+
+    for split in splits:
         # print(split)
         parses = list(split.parse(limit=2))
         # print(parses)
@@ -157,7 +162,7 @@ def res_q_parse(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI,
             "parseDots": pdots,
             "parseDotURLs": [prepare_dot_url(dot) for dot in pdots]
         }
-        # print(obj["analysis"])
+        print(obj["analysis"])
         r.append(obj)
 
     return r
@@ -182,7 +187,8 @@ def parse_graph(graph):
 def jedge(pred, node, label):
     return (node.pada.devanagari(strict_io=False),
             jtag(node.getMorphologicalTags()),
-            SanskritObject(label, encoding=sanscript.SLP1).devanagari(strict_io=False),
+            SanskritObject(label, encoding=sanscript.SLP1).devanagari(
+                strict_io=False),
             pred.pada.devanagari(strict_io=False))
 
 
