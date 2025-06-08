@@ -5,6 +5,49 @@ Contains Utilities to help learning Samskrutam
 - **sanskrit_parser** is helpful in splitting and adding the words
 - **dictionaries** is an interface for various dictionories
 
+- currently `DevHubLexiconDicToMongodb.py` supports all dictionaries collected so far
+
+#### Totals
+
+- last calculated:
+  - total records: `927606`
+  - unique words (individual): `782014`
+  - total unique words: `364949`
+
+```
+    Dictionary  Row Count  Unique Row Count
+15          mw     287443            193914
+17        mw72      55388             51154
+23         vcp      50134             48635
+20         shs      47312             46707
+26         yat      45206             44720
+25         wil      44578             43939
+21         skd      42531             40817
+7          cae      40069             38484
+1          acc      49822             32576
+2         ap90      32176             31703
+28      eng2te      31568             29772
+16         mwe      32378             28239
+4          bor      24608             22012
+14          md      20749             20103
+6          bhs      17839             17777
+5          ben      17310             17036
+19         pui      17512             11740
+0           ae      11364             11347
+10         inm      12647              9454
+9          ieg       7907              7567
+8          gst       6780              6761
+3         armh       7907              6673
+18          pe       8799              6625
+12         lan       4944              4726
+24         vei       3834              3704
+13         mci       2643              2325
+11         krm       2061              1698
+29  dhatu_pata       1159               888
+27         pgn        485               470
+22         snp        453               448
+```
+
 #### submitting with git tag
 
 ```sh

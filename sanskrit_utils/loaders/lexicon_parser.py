@@ -13,10 +13,12 @@ class LexiconHTMLParser(HTMLParser):
     sans_word_tag = 's'
     fromLang = sanscript.SLP1
     toLang = sanscript.DEVANAGARI
+    key_word = ''
     key_fromLang = sanscript.SLP1
     key_toLang = sanscript.DEVANAGARI
 
     def init(self,
+             key_word='',
              sans_word_tag='s',
              key_fromLang=sanscript.SLP1,
              key_toLang=sanscript.DEVANAGARI,
@@ -25,11 +27,13 @@ class LexiconHTMLParser(HTMLParser):
         self.sans_word_tag = sans_word_tag
         self.fromLang = fromLang
         self.toLang = toLang
+        self.key_word = key_word
         self.key_fromLang = key_fromLang
         self.key_toLang = key_toLang
 
     def handle_starttag(self, tag, attrs):
         # print("Encountered a start tag:", tag)
+        # print("Encountered a start attrs:", attrs)
         self.current_tag = tag
         self.tag_stack.append(tag)
         data = ''
@@ -37,6 +41,8 @@ class LexiconHTMLParser(HTMLParser):
             data = '**'
         elif tag.startswith('key'):
             data = ' _'
+        elif tag in ['ab']:
+            data = ' `'
         elif tag in ['body', 'lb']:
             data = '  \n'
         elif tag in ['div']:
@@ -44,6 +50,12 @@ class LexiconHTMLParser(HTMLParser):
             # print('attributes:', attrDict)
             if attrDict.get('n', '') == 'lb':
                 data = '  \n'
+        elif tag in ['info']:
+            attrDict = dict(attrs)
+            if attrDict.get('or') is not None:
+                final_data = transliterate(
+                    attrDict.get('or', ''), self.fromLang, self.toLang)
+                data = ' or: __ {} __ '.format(final_data)
         else:
             data = ''
 
@@ -56,9 +68,19 @@ class LexiconHTMLParser(HTMLParser):
         # print("Remaingin Tags :", self.tag_stack)
         data = ''
         if tag == 'h':
-            data = '**'
+            if self.mark_down.endswith('**'):
+                self.mark_down = self.mark_down[:-2]
+                data = ''
+            else:
+                data = '**'
+        elif tag in ['ab']:
+            data = '` '
         elif tag.startswith('key'):
-            data = '_ '
+            if self.mark_down.endswith(' _'):
+                self.mark_down = self.mark_down[:-2]
+                data = ''
+            else:
+                data = '_ '
         else:
             data = ''
         self.mark_down = self.mark_down + data
@@ -66,11 +88,17 @@ class LexiconHTMLParser(HTMLParser):
     def handle_data(self, data):
         # print("Encountered some data  :", self.current_tag, ': ', data)
         final_data = data
-        if self.current_tag in ['l', 'pc']:  # as of not not using this info
+        if self.current_tag in ['l', 'pc']:  # as of now not using this info
             return
         if self.current_tag in ['key1', 'key2'] and self.key_fromLang != self.key_toLang:
+            if self.key_word != '' and self.key_word == data:
+                final_data = ''
+            else:
+                final_data = transliterate(
+                    data, self.key_fromLang, self.key_toLang)
+        if self.current_tag in ['s1'] and self.key_fromLang != self.key_toLang:
             final_data = transliterate(
-                data, self.key_fromLang, self.key_toLang)
+                data, sanscript.IAST, self.key_toLang)
         if self.current_tag == self.sans_word_tag and self.fromLang != self.toLang:
             # sanskrit word
             final_data = transliterate(
