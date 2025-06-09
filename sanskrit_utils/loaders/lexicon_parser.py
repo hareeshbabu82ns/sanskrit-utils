@@ -8,6 +8,7 @@ from indic_transliteration.sanscript import SchemeMap, SCHEMES, transliterate
 
 class LexiconHTMLParser(HTMLParser):
     tag_stack = []
+    dictionary = '',
     current_tag = ''
     mark_down = ''
     sans_word_tag = 's'
@@ -16,8 +17,10 @@ class LexiconHTMLParser(HTMLParser):
     key_word = ''
     key_fromLang = sanscript.SLP1
     key_toLang = sanscript.DEVANAGARI
+    unhandled_tags = set()
 
     def init(self,
+             dictionary='',
              key_word='',
              sans_word_tag='s',
              key_fromLang=sanscript.SLP1,
@@ -30,6 +33,7 @@ class LexiconHTMLParser(HTMLParser):
         self.key_word = key_word
         self.key_fromLang = key_fromLang
         self.key_toLang = key_toLang
+        self.dictionary = dictionary
 
     def handle_starttag(self, tag, attrs):
         # print("Encountered a start tag:", tag)
@@ -48,15 +52,27 @@ class LexiconHTMLParser(HTMLParser):
         elif tag in ['div']:
             attrDict = dict(attrs)
             # print('attributes:', attrDict)
-            if attrDict.get('n', '') == 'lb':
+            if attrDict.get('n', '') in ['lb', 'NI']:
                 data = '  \n'
-        elif tag in ['info']:
+        elif tag in ['info', 'vlex']:
+            info_data = ''
             attrDict = dict(attrs)
-            if attrDict.get('or') is not None:
-                final_data = transliterate(
-                    attrDict.get('or', ''), self.fromLang, self.toLang)
-                data = ' or: __ {} __ '.format(final_data)
+            for key, value in attrDict.items():
+                if value is None or value.strip() == '':
+                    info_data = ''
+                elif key in ['or', 'verb', 'parse', 'cp']:
+                    final_data = transliterate(
+                        attrDict.get(key, ''), self.fromLang, self.toLang)
+                    info_data = ' {}: __ {} __ '.format(key, final_data)
+                elif key in ['lex']:  # ignore these tags
+                    info_data = ''
+                else:
+                    info_data = '{}: {}'.format(
+                        key, attrDict.get(key, ''))
+                data += info_data
         else:
+            # if tag not in self.unhandled_tags:
+            #     self.unhandled_tags.add(tag)
             data = ''
 
         self.mark_down = self.mark_down + data
@@ -90,19 +106,23 @@ class LexiconHTMLParser(HTMLParser):
         final_data = data
         if self.current_tag in ['l', 'pc']:  # as of now not using this info
             return
-        if self.current_tag in ['key1', 'key2'] and self.key_fromLang != self.key_toLang:
+        elif self.current_tag in ['key1', 'key2'] and self.key_fromLang != self.key_toLang:
             if self.key_word != '' and self.key_word == data:
                 final_data = ''
             else:
                 final_data = transliterate(
                     data, self.key_fromLang, self.key_toLang)
-        if self.current_tag in ['s1'] and self.key_fromLang != self.key_toLang:
+        elif self.current_tag in ['s1'] and self.key_fromLang != self.key_toLang:
             final_data = transliterate(
                 data, sanscript.IAST, self.key_toLang)
-        if self.current_tag == self.sans_word_tag and self.fromLang != self.toLang:
+            # self.unhandled_tags.discard(self.current_tag)
+        elif self.current_tag == self.sans_word_tag and self.fromLang != self.toLang:
             # sanskrit word
             final_data = transliterate(
                 data, self.fromLang, self.toLang)
             final_data = f'__{final_data}__'
+            # self.unhandled_tags.discard(self.current_tag)
+        # else:
+            # self.unhandled_tags.add(self.current_tag)
 
         self.mark_down = self.mark_down + final_data

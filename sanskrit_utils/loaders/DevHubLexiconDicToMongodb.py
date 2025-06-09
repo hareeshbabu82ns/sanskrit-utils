@@ -29,17 +29,33 @@ myclient = pymongo.MongoClient(mdbUrl)
 mydb = myclient[mdbDB]
 
 dictEntriesCollection = mydb["DictWords"]
+# s is always SLP1
 SANS_WORD_TAG = {
+    'ben': 'i',  # has both i and s
     'bhs': 'b',
     'ieg': 'i',
     'inm': 'i',
     'lan': 'b',
-    'mci': 'b',
+    'mci': 'i',
+    'mw72': 'i',  # has both i and s
     'pgn': 'i',
     'pui': 'i',
     'snp': 'i',
     'vei': 'b',
     'default': 's',
+}
+SANS_WORD_LANG = {
+    'ben': sanscript.IAST,
+    'bhs': sanscript.IAST,
+    'inm': sanscript.IAST,
+    'lan': sanscript.IAST,
+    'mci': sanscript.IAST,
+    'mw72': sanscript.IAST,
+    'pgn': sanscript.IAST,
+    'pui': sanscript.IAST,
+    'snp': sanscript.IAST,
+    'vei': sanscript.IAST,
+    'default': sanscript.SLP1,
 }
 # All Dictionaries
 # LEXICON_DICT_LIST = [
@@ -52,12 +68,14 @@ SANS_WORD_TAG = {
 # ]
 LEXICON_DICT_LIST = ['eng2te']
 
+# pe - no transliteration needed
+
 # Sanskrit Dictionaries
 LEXICON_SAN_DICT_LIST = [
     'acc', 'ap90', 'armh', 'ben',
     'bhs', 'cae', 'gst', 'ieg',
     'inm', 'krm', 'lan', 'mci',
-    'md', 'mw', 'mw72', 'pe',
+    'md', 'mw', 'mw72', 'pe', 'pgn',
     'pui', 'shs', 'skd', 'snp',
     'vcp', 'vei', 'wil', 'yat'
 ]
@@ -157,6 +175,8 @@ SANSCRIPT_LANGS_TO_DB = {
     sanscript.TELUGU: 'TEL'
 }
 
+unhandled_tags = set()
+
 
 def convert_text(text, fr=sanscript.SLP1, to=sanscript.ITRANS):
     return transliterate(text, fr, to)
@@ -180,8 +200,10 @@ def push_to_mongodb(con, dictName):
     # total rows in the table
     total_rows = con.execute(
         f'SELECT COUNT(*) FROM {table_name}').fetchone()[0]
-    # limit number of records to upload (for testing)
+    # limit number of records and delete existing to upload new (for testing)
     # total_rows = 100
+    # dictEntriesCollection.delete_many(
+    #     {"origin": LEXICON_ALL_DICT_TO_DB_MAP[dictName]})
 
     # process the rows
     cur = con.cursor()
@@ -191,16 +213,20 @@ def push_to_mongodb(con, dictName):
     bulk_records = []
     bulk_records_chunk_size = 5000
 
-    for row in cur.execute(f'SELECT * FROM {table_name}'):
+    wordIndex = table_column_positions.get(
+        LEXICON_ALL_TABLE_WORD_FIELD_MAP[dictName], None)
+    descIndex = table_column_positions.get(
+        LEXICON_ALL_TABLE_DESC_FIELD_MAP[dictName], None)
+
+    wordFieldName = LEXICON_ALL_TABLE_WORD_FIELD_MAP[dictName]
+    lnumFieldName = 'lnum' if 'lnum' in table_columns_fields else None
+    orderFieldName = lnumFieldName if lnumFieldName is not None else wordFieldName
+
+    for row in cur.execute(f'SELECT * FROM {table_name} order by {orderFieldName}'):
         # record = {"wordOriginal": row[0],
         #           "wordIndex": row[1],
         #           "descOriginal": row[2],
         #           "origin": dictName}
-
-        wordIndex = table_column_positions.get(
-            LEXICON_ALL_TABLE_WORD_FIELD_MAP[dictName], None)
-        descIndex = table_column_positions.get(
-            LEXICON_ALL_TABLE_DESC_FIELD_MAP[dictName], None)
 
         word = row[wordIndex] if wordIndex is not None else ''
         description = row[descIndex] if descIndex is not None else ''
@@ -237,6 +263,8 @@ def push_to_mongodb(con, dictName):
             rowData["descriptionLang"] = "TEL"
         elif dictName in ['eng2en']:
             rowData["wordLang"] = "ENG"
+            rowData["descriptionLang"] = "ENG"
+        elif dictName in ['pe', 'pgn']:
             rowData["descriptionLang"] = "ENG"
         elif dictName in ['dhatu_pata']:
             rowData["wordLang"] = "SAN"
@@ -278,6 +306,8 @@ def push_to_mongodb(con, dictName):
             break
         idx = idx+1
 
+    # print('Total unhandled tags:', len(unhandled_tags),
+    #       "\nUnhandled tags:", unhandled_tags)
     con.close()
 
 
@@ -292,6 +322,13 @@ def get_desc_transripts(text, dictName, word):
                 {"lang": SANSCRIPT_LANGS_TO_DB[lang], "value": valueTrimmed})
     elif dictName in ['eng2en']:  # English dictionaries
         valueTrimmed = text.strip()
+        data.append(
+            {"lang": "ENG", "value": valueTrimmed})
+    # HTML stripping is needed but not transliteration
+    elif dictName in ['pe', 'md', 'pui', 'pgn']:
+        value = convert_lexicon_html_to_markdown(
+            dictName, text, key_word=word)
+        valueTrimmed = value.strip()
         data.append(
             {"lang": "ENG", "value": valueTrimmed})
     elif dictName in ['eng2te']:  # Telugu dictionaries
@@ -336,6 +373,7 @@ def convert_lexicon_html_to_markdown(dictionary,  content, key_word='', toLang=s
     parser = LexiconHTMLParser()
     if dictionary in LEXICON_SAN_DICT_LIST:
         parser.init(
+            dictionary=dictionary,
             sans_word_tag=sans_word_tag,
             key_fromLang=sanscript.SLP1,
             key_toLang=toLang,
@@ -344,11 +382,13 @@ def convert_lexicon_html_to_markdown(dictionary,  content, key_word='', toLang=s
             toLang=toLang)
     else:
         parser.init(
+            dictionary=dictionary,
             key_fromLang=sanscript.SLP1,
             key_toLang=sanscript.SLP1,
             key_word=key_word,
             toLang=toLang)
     parser.feed(content)
+    # unhandled_tags.update(parser.unhandled_tags)
 
     return parser.mark_down
 
