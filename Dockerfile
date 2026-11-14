@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 RUN apt-get update \
-  && apt-get -y install --no-install-recommends nginx build-essential python3-dev \
+  && apt-get -y install --no-install-recommends git nginx build-essential python3-dev \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv/app
