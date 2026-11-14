@@ -7,11 +7,11 @@ from ariadne import load_schema_from_path, make_executable_schema
 from .Query import query
 from .Mutation import mutation
 from .Sanscript import sanscriptSchemesEnum, dictionaryEnum, dictionaryItem
-from . import sans_parser  # noqa: F401  registers parser resolvers on `query`
+from .sans_parser import parseType, parseItemType  # also registers parser resolvers on `query`
 
 type_defs = load_schema_from_path(os.path.dirname(os.path.abspath(__file__)))
 
-type_resolvers = [query, mutation, dictionaryItem,
+type_resolvers = [query, mutation, dictionaryItem, parseType, parseItemType,
                   sanscriptSchemesEnum, dictionaryEnum]
 
 schema = make_executable_schema(type_defs, type_resolvers)

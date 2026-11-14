@@ -1,85 +1,254 @@
 extend type Query {
   """
-  Split Sentence
+  Sandhi-split a phrase or sentence into words, best splits first.
+  Each split is a list of words that the lexicon knows.
   """
   splits(
     text: String!
-    schemeFrom: SanscriptScheme
-    schemeTo: SanscriptScheme
-    strictIO: Boolean
-    limit: Int
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+    "See `parse` for what strict input/output means"
+    strictIO: Boolean = false
+    "Maximum number of splits to return (1-100)"
+    limit: Int = 10
   ): [[String!]!]!
 
   """
-  Joins Words (Sandhi)
+  Two-part sandhi decompositions of a single word, straight from the sandhi
+  rules: `tasminniti` -> `tasmin` + `iti`. Unlike `splits`, the parts are not
+  required to be real words; `valid` tells which pairs are.
   """
-	joins(
-		words: [String!]!
-		schemeFrom: SanscriptScheme
-		schemeTo: SanscriptScheme
-		strictIO: Boolean
-	): [String!]!
+  splitPairs(
+    text: String!
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+    strictIO: Boolean = false
+    "Only cut at this letter (0-based, counted in SLP1 letters). Default: every position"
+    position: Int
+    "Only return pairs whose two parts are both known words"
+    validOnly: Boolean = false
+  ): [SplitPair!]!
 
   """
-  Tags of a Sentense
+  Join words by sandhi. Returns every form the rules allow, fully joined forms
+  first; the rules over-generate, so not every result is a form in real use.
+  A final visarga is read as `s` unless `strictIO` is set (write `punar`, not
+  `punaH`, for a word ending in `r`).
+  """
+  joins(
+    words: [String!]!
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+    strictIO: Boolean = false
+  ): [String!]!
+
+  """
+  Morphological analyses of a word, or of each word of a space-separated text.
+  A word the lexicon does not know yields no entries.
   """
   tags(
     text: String!
-		schemeFrom: SanscriptScheme
-		schemeTo: SanscriptScheme
-		strictIO: Boolean    
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+    strictIO: Boolean = false
+    "Which lexicon to consult"
+    lexicon: Lexicon = COMBINED
   ): [Tag!]!
 
   """
-  PreSegmented Splits \n
-  - expects list of words with spaces in `text` \n
-  - expects the words to be already splitted for `sandhis` \n
-  - ex: text: "देवदत्तः ग्रामं गच्छति"
+  Words of a sentence whose sandhi is already resolved
+  (`देवदत्तः ग्रामं गच्छति`), in the form the parser uses.
+  A word that is not known as it stands is itself sandhi-split.
   """
   presegmented(
     text: String!
-    schemeFrom: SanscriptScheme
-    schemeTo: SanscriptScheme
-    strictIO: Boolean
-    limit: Int
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+    strictIO: Boolean = false
+    limit: Int @deprecated(reason: "Has no effect: a pre-segmented sentence has one segmentation")
   ): [String!]!
 
+  """
+  Sandhi-split a sentence and analyse each split: which word relates to which,
+  and how (karaka relations, visheshana, samasta, ...).
+
+  Input is normalised unless `strictIO` is true: punctuation and digits are
+  dropped and a final visarga/anusvara is read the way the lexicon spells it.
+  With `strictIO: true` the input is taken as typed and word forms in the
+  output keep a final `s`/`r` instead of visarga. In both modes anusvara
+  before a stop is read as the class nasal (`శుక్లాంబర` = `SuklAmbara`).
+
+  Analysing a split is only done if `status`, `analysis` or one of the DOT
+  fields is selected.
+  """
   parse(
     text: String!
-    schemeFrom: SanscriptScheme
-    schemeTo: SanscriptScheme
-    strictIO: Boolean
-    limit: Int
-    preSegmented: Boolean
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+    strictIO: Boolean = false
+    "Maximum number of sandhi splits to analyse (1-100)"
+    limit: Int = 10
+    "The text is already split into words; analyse it as it stands"
+    preSegmented: Boolean = false
+    "Maximum number of analyses to return per split (1-100)"
+    parseLimit: Int = 2
+    "Per split, only return the analyses that tie for the lowest cost"
+    minCostOnly: Boolean = false
   ): [Parse!]!
 
+  """
+  Entries of the dhatupatha for a verbal root, given bare (`gam`) or as taught
+  with its markers (`gamx~`).
+  """
+  dhatus(
+    dhatu: String!
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+  ): [Dhatu!]!
+
+  "The fourteen Maheshvara sutras"
+  maheshvaraSutras(schemeTo: SanscriptScheme = DEVANAGARI): [String!]!
+
+  "The sounds a pratyahara such as `ac`, `hal` or `jaS` stands for"
+  pratyahara(
+    name: String!
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+    "`aR` and `iR` can end at the first or the second `R`; true takes the second"
+    longForm: Boolean = true
+    "Include the long vowels alongside the short ones"
+    withLongVowels: Boolean = false
+  ): Pratyahara!
+
+  """
+  Syllable weights (guru/laghu) of each line of a verse.
+  Lines end at a line break or a danda.
+  """
+  meter(
+    text: String!
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
+  ): [MeterLine!]!
 }
 
+"Where word forms are looked up"
+enum Lexicon {
+  "INRIA and SANSKRIT_DATA together"
+  COMBINED
+  "Forms from the INRIA Sanskrit Heritage database"
+  INRIA
+  "Forms and stem+ending analysis from the sanskrit_util database"
+  SANSKRIT_DATA
+}
+
+enum ParseStatus {
+  "`analysis` has at least one analysis"
+  OK
+  "No analysis connects all the words of this split"
+  NO_PARSE
+  "The analysis was stopped because it ran out of time"
+  TIMEOUT
+}
+
+"One sandhi split of the input and its analyses"
 type Parse {
-  analysis: [ParseItem]!
-  splitDot: String!
-  splitDotURL: String!
-  parseDots: [String!]!
-  parseDotURLs: [String!]!
+  "The words of this split"
+  split: [String!]!
+  status: ParseStatus!
+  "Analyses of this split, lowest cost first"
+  analysis: [ParseItem!]!
+  """
+  Graphviz DOT of every relation that was considered between the words of
+  this split, with one node per possible reading of a word. Empty if the
+  split was not analysed. Text is in `schemeTo` unless `scheme` is given.
+  """
+  splitDot(scheme: SanscriptScheme): String!
+  "Link that renders `splitDot` as an image"
+  splitDotURL(scheme: SanscriptScheme): String!
+  "`dot` of each entry of `analysis`"
+  parseDots(scheme: SanscriptScheme): [String!]!
+  "`dotURL` of each entry of `analysis`"
+  parseDotURLs(scheme: SanscriptScheme): [String!]!
 }
 
+"One analysis of a split: a tree of relations between its words"
 type ParseItem {
+  "Lower is better; analyses with shorter relations cost less"
+  cost: Float!
+  "One entry per word, in sentence order"
   graph: [ParseGraph!]!
+  "Graphviz DOT of this analysis. Text is in `schemeTo` unless `scheme` is given"
+  dot(scheme: SanscriptScheme): String!
+  "Link that renders `dot` as an image"
+  dotURL(scheme: SanscriptScheme): String!
+  """
+  The analysis as tab-separated rows, one per word:
+  position, word, `_`, root, tags joined by `|`, position of the head (0 for
+  the root of the tree), relation.
+  """
+  conll: String!
 }
 
 type ParseGraph {
-  node: ParseTag
+  "The word and the reading of it that this analysis uses"
+  node: ParseTag!
+  "The word that `node` depends on; null for the root of the tree"
   predecessor: ParseTag
+  "How `node` relates to `predecessor`; null for the root of the tree"
   sambandha: String
 }
 
 type ParseTag {
+  "0-based position of the word in the split"
+  index: Int!
   pada: String!
   root: String
   tags: [String!]!
 }
 
 type Tag {
+  "The word as it was looked up"
+  form: String!
+  "The stem or root the form comes from"
   word: String!
   tags: [String!]!
+}
+
+type SplitPair {
+  left: String!
+  right: String!
+  "Both parts are words the lexicon knows"
+  valid: Boolean!
+}
+
+type Dhatu {
+  dhatu: String!
+  "The root as taught, with its markers (anubandhas)"
+  mulaDhatu: String!
+  "Meaning"
+  artha: String!
+  "The class (gana) the root belongs to"
+  gana: String!
+  "Whether the root takes an object, as the dhatupatha words it"
+  karmakatva: String!
+  sakarmaka: Boolean!
+  dvikarmaka: Boolean!
+  "Whether the root takes the augment i (sew / aniw / vew)"
+  ittva: String!
+  "parasmaipadi / atmanepadi / ubhayapadi"
+  pada: String!
+  "Third person singular present"
+  rupa: String!
+}
+
+type Pratyahara {
+  name: String!
+  varnas: [String!]!
+}
+
+type MeterLine {
+  text: String!
+  syllables: Int!
+  "One letter per syllable: G for guru (heavy), L for laghu (light)"
+  pattern: String!
 }

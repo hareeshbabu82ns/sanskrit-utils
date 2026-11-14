@@ -9,3 +9,5 @@ venv
 *.egg-info
 tmp
 examples
+tests
+.pytest_cache

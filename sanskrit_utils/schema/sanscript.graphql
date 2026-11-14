@@ -4,8 +4,8 @@ extend type Query {
   """
   transliterate(
     text: String!
-    schemeFrom: SanscriptScheme
-    schemeTo: SanscriptScheme
+    schemeFrom: SanscriptScheme = DEVANAGARI
+    schemeTo: SanscriptScheme = SLP1
   ): String!
 
   phoneticWordSearch(searchWith: PhoneticWordSearchInput!): PhoneticWordResults!
@@ -311,5 +311,9 @@ enum SanscriptScheme {
   TELUGU
   TAMIL
   KANNADA
+  """
+  Labels English text in dictionary entries. Not a script: text cannot be
+  transliterated or parsed from or to it.
+  """
   ENGLISH
 }

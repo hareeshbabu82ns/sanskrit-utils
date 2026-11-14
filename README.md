@@ -120,6 +120,21 @@ $> MONGO_DB_PASSWORD=sansutils \
 
 #### API
 
+One endpoint, `/graphql`. Every argument and its default is documented in the
+explorer at `GET /graphql`. Text arguments take `schemeFrom` (default
+`DEVANAGARI`) and results come back in `schemeTo` (default `SLP1`).
+
+`strictIO` (default `false`) controls how text is read and written:
+
+- `false`: punctuation, digits and dandas are dropped, a final visarga or
+  anusvara is read the way the lexicon spells it, and word forms in the result
+  show a final `s`/`r` as visarga.
+- `true`: the text is taken as typed, and word forms in the result keep the
+  final `s`/`r` the parser works with (so `rAmas` and `punar` stay distinct).
+
+In both modes anusvara before a stop is read as the class nasal
+(`శుక్లాంబర` = `SuklAmbara`), because that is the only spelling the lexicon has.
+
 - convert text between schemes
 
 ```graphql
@@ -128,7 +143,7 @@ $> MONGO_DB_PASSWORD=sansutils \
 }
 ```
 
-- dictionary search
+- dictionary search (needs MongoDB)
 
 ```graphql
 {
@@ -157,12 +172,12 @@ $> MONGO_DB_PASSWORD=sansutils \
 }
 ```
 
-- dictionary Browse
+- dictionary browse (needs MongoDB)
 
 ```graphql
 {
   dictionaryBrowse(
-    searchWith: { origin: VCP, outputScheme: TELUGU, limit: 10, offset: 2 }
+    browseWith: { origin: VCP, outputScheme: TELUGU, limit: 10, offset: 2 }
   ) {
     total
     results {
@@ -175,7 +190,7 @@ $> MONGO_DB_PASSWORD=sansutils \
 }
 ```
 
-- vaakya split
+- sandhi split of a sentence, best splits first
 
 ```graphql
 {
@@ -183,74 +198,158 @@ $> MONGO_DB_PASSWORD=sansutils \
     text: "कालिदासस्य जीवनवृत्तिविषये अनेकाः लोकविश्रुतयः अनेके वादाः च सन्ति"
     schemeTo: TELUGU
     limit: 2
-    strictIO: false
   )
 }
 ```
 
-- word joins (sandhi)
+- two-part sandhi decompositions of one word, straight from the rules
+  (`tasminniti` → `tasmin` + `iti`); `valid` marks pairs of real words
 
 ```graphql
 {
-  joins(
-    words: ["కాలి", "దాసస్య"]
-    schemeFrom: TELUGU
-    schemeTo: TELUGU
-    strictIO: false
-  )
+  splitPairs(text: "तस्मिन्निति", schemeTo: IAST, validOnly: true) {
+    left
+    right
+    valid
+  }
 }
 ```
 
-- word tags
+- sandhi join of two or more words (every form the rules allow)
+
+```graphql
+{
+  joins(words: ["కాలి", "దాసస్య"], schemeFrom: TELUGU, schemeTo: TELUGU)
+}
+```
+
+- morphological tags of a word, or of each word of a text
 
 ```graphql
 {
   tags(text: "కాలిదాసస్య", schemeFrom: TELUGU, schemeTo: TELUGU) {
+    form
     word
     tags
   }
 }
 ```
 
-- presegmented tags
+`lexicon: INRIA | SANSKRIT_DATA | COMBINED` picks the word list (default `COMBINED`).
+
+- words of a sentence that is already split
 
 ```graphql
 {
-  presegmented(
-    text: "దేవదత్తః గ్రామం గచ్ఛతి"
-    schemeFrom: TELUGU
-    schemeTo: TELUGU
-  )
+  presegmented(text: "దేవదత్తః గ్రామం గచ్ఛతి", schemeFrom: TELUGU, schemeTo: TELUGU)
 }
 ```
 
-- presegmented parser tags
+- sentence analysis: sandhi split, then the relations between the words
 
 ```graphql
 {
-  parse(text: "देवदत्तः ग्रामं गच्छति", schemeTo: TELUGU) {
-    parseDots
-    parseDotURLs
-    splitDot
-    splitDotURL
+  parse(
+    text: "శుక్లాంబరధరం విష్ణుం శశివర్ణం చతుర్భుజమ్"
+    schemeFrom: TELUGU
+    schemeTo: TELUGU
+    limit: 2
+  ) {
+    split
+    status
     analysis {
+      cost
       graph {
         node {
+          index
           pada
           root
           tags
         }
         predecessor {
+          index
           pada
-          root
-          tags
         }
         sambandha
       }
+      dot
+      dotURL
+      conll
     }
+    splitDot
+    splitDotURL
   }
 }
 ```
+
+`limit` caps the sandhi splits, `parseLimit` (default 2) the analyses per
+split, `minCostOnly` keeps only the cheapest analyses, and `preSegmented: true`
+analyses the text as it stands. `status` is `OK`, `NO_PARSE` (no analysis
+connects all the words) or `TIMEOUT`. Splits are only analysed when `status`,
+`analysis` or a DOT field is selected. DOT text follows `schemeTo`; pass
+`scheme` to a DOT field to override it, e.g. `splitDotURL(scheme: IAST)`.
+
+Sentences of about ten words and more often cannot be analysed in reasonable
+time. `PARSE_SPLIT_TIMEOUT` (seconds per split, default 5) and
+`PARSE_TOTAL_TIMEOUT` (seconds per query, default 15) bound the work; such
+splits come back with `status: TIMEOUT`.
+
+- dhatupatha entries of a root
+
+```graphql
+{
+  dhatus(dhatu: "कृ", schemeTo: DEVANAGARI) {
+    dhatu
+    mulaDhatu
+    artha
+    gana
+    pada
+    karmakatva
+    sakarmaka
+    ittva
+    rupa
+  }
+}
+```
+
+- Maheshvara sutras and pratyaharas
+
+```graphql
+{
+  maheshvaraSutras
+  pratyahara(name: "अच्", schemeTo: DEVANAGARI, withLongVowels: true) {
+    name
+    varnas
+  }
+}
+```
+
+- guru/laghu scansion of a verse, line by line
+
+```graphql
+{
+  meter(text: "शुक्लाम्बरधरं विष्णुं शशिवर्णं चतुर्भुजम् ।", schemeTo: IAST) {
+    text
+    syllables
+    pattern
+  }
+}
+```
+
+#### Tests
+
+```sh
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest              # no MongoDB or network needed
+.venv/bin/python -m pytest -k parse     # a subset
+```
+
+`tests/test_api_*.py` run GraphQL queries against the schema,
+`tests/test_parser_service.py` covers the service layer, and
+`tests/test_lib_*.py` test `sanskrit_parser` and `sanskrit_util` directly.
+Tests reported as `xfail` describe known bugs in those two libraries; one that
+starts passing (reported as a failure) means the bug is fixed upstream and the
+workaround named in its reason can go.
 
 #### Indexes
 

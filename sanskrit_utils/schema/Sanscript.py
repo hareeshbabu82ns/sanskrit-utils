@@ -123,9 +123,9 @@ def prepare_dict_item_from_input(withData, update=False):
             transformed_data['wordOriginal'] = word_original
         if withData.get('description') is not None:
             transformed_data['descOriginal'] = desc_original
-        if len(word_dict.items()) is not 0:
+        if word_dict:
             transformed_data.update({'word': word_dict})
-        if len(desc_dict.items()) is not 0:
+        if desc_dict:
             transformed_data.update({'desc': desc_dict})
     else:
         transformed_data = {
@@ -137,7 +137,6 @@ def prepare_dict_item_from_input(withData, update=False):
             'origin': origin
         }
 
-    print(transformed_data)
     return transformed_data
 
 
@@ -178,8 +177,13 @@ def res_m_delete_dict_item(_, info, id):
 
 
 @query.field("transliterate")
-def res_q_transliterate(_, info, text, schemeFrom=SanscriptScheme.DEVANAGARI, schemeTo=SanscriptScheme.SLP1):
-    # return f'{text},{schemeFrom},{schemeTo}'
+def res_q_transliterate(_, info, text, schemeFrom=None, schemeTo=None):
+    schemeFrom = schemeFrom or SanscriptScheme.DEVANAGARI
+    schemeTo = schemeTo or SanscriptScheme.SLP1
+    for scheme in (schemeFrom, schemeTo):
+        # ENGLISH labels dictionary text; it is not a script
+        if scheme.value not in SCHEMES:
+            raise GraphQLError(f'{scheme.name} is not a script that text can be converted to or from')
     return transliterate(text, schemeFrom.value, schemeTo.value)
 
 # @dictionaryItem.field("key")
@@ -197,6 +201,8 @@ def res_q_dict_item_by_id(_, info, id, outputScheme=SanscriptScheme.DEVANAGARI):
         s.name.value for s in info.field_nodes[0].selection_set.selections]
 
     record = dictEntriesCollection.find_one(ObjectId(id))
+    if record is None:
+        raise GraphQLError("No Dictionary Item found")
     item = {'id': record['_id'],
             'origin': Dictionaries(record['origin'])}
 

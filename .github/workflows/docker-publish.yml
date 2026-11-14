@@ -1,6 +1,6 @@
 name: Build & Release
 
-# - Pull requests:       syntax check + Docker build (not pushed)
+# - Pull requests:       syntax check + tests + Docker build (not pushed)
 # - Push to master/main: image tagged `master` / `main` and `sha-<short>`
 # - Tag vX.Y.Z:          image tagged `X.Y.Z`, `X.Y`, `X` (X>0), `latest`
 #                        + GitHub Release with auto-generated notes
@@ -32,6 +32,22 @@ jobs:
           python-version: "3.12"
       - name: Byte-compile sources
         run: python -m compileall -q app.py sanskrit_utils scripts
+
+  # Informational: the image build does not wait for it. Add `test` to the
+  # `needs` of `docker` to make a failing test block publishing.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run tests
+        run: python -m pytest
 
   docker:
     needs: check
