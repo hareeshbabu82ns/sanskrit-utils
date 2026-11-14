@@ -7,7 +7,6 @@ from sanskrit_parser import Parser
 from indic_transliteration.sanscript import transliterate
 from sanskrit_parser.base.sanskrit_base import SanskritObject, SanskritNormalizedString
 from sanskrit_parser.parser.sandhi_analyzer import LexicalSandhiAnalyzer
-from indic_transliteration import sanscript
 
 from sanskrit_utils.schema.Sanscript import SanscriptScheme
 

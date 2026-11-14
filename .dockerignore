@@ -1,7 +1,11 @@
-**/node_modules
-venv
+.git
+.github
+.ansible
+.vscode
 .venv
+venv
+.env
 **/__pycache__
-vault.pass
-tmp
 *.egg-info
+tmp
+examples

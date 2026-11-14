@@ -1,17 +1,17 @@
 FROM python:3.12-slim
 
-RUN apt-get clean \
-  && apt-get -y update
+RUN apt-get update \
+  && apt-get -y install --no-install-recommends nginx build-essential python3-dev \
+  && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get -y install nginx \
-  && apt-get -y install python3-dev \
-  && apt-get -y install build-essential
-
-COPY . /srv/app
 WORKDIR /srv/app
 
-RUN pip install -r requirements.txt --src /usr/local/src
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY nginx.conf /etc/nginx
-RUN chmod +x ./start.sh
-CMD ["./start.sh"]
+COPY . .
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+RUN chmod +x docker/start.sh
+
+EXPOSE 80
+CMD ["./docker/start.sh"]

@@ -48,90 +48,45 @@ Contains Utilities to help learning Samskrutam
 22         snp        453               448
 ```
 
-#### submitting with git tag
+#### Running locally
 
 ```sh
-# Increment patch version (vX.X.X+1)
-./tag_version.py patch
-
-# Increment minor version (vX.X+1.0)
-./tag_version.py minor
-
-# Increment major version (vX+1.0.0)
-./tag_version.py major
+cp .env.example .env   # set MONGO_DB_* (optional: transliterate/parser queries work without MongoDB)
+./run.sh               # creates .venv if missing, installs requirements, starts the API
+./run.sh --install     # only set up .venv / install requirements
 ```
 
-#### Setting up for Development
-
-```sh
-$> apt install python3-virtualenv
-
-# create virtual env
-$> python3 -m virtualenv .venv
-
-# activate virtual env
-$> .venv
-# or
-$> source .venv/bin/activate
-
-# deactivate virtual env
-$> deactivate
-
-# write requirements.txt
-$> pip freeze > requirements.txt
-
-# install packages from requiremnts.txt
-$> pip install -r requirements.txt
-```
-
-#### Running sample API
-
-```sh
-$> python api_test.py
-```
-
-#### Building and Running locally
-
-```sh
-$> PYTHONPATH=. python setup.py install
-$> python app.py
-
-# run using flask module
-$> MONGO_DB_PASSWORD=pwd  \
-    MONGO_DB_HOST=192.168.0.10  \
-    MONGO_DB_PORT=3333  \
-    python -m flask run
-```
+The GraphQL explorer is at `http://127.0.0.1:5000/graphql`.
 
 #### Building and Running Docker
 
-- Development mode
-
 ```sh
-$> docker build -f Dockerfile.dev --tag sanskrit-utils .
-$> docker run -d -p 5000:5000 --name sanskrit-utils sanskrit-utils
-```
+# development (flask dev server on :5000)
+docker build -f Dockerfile.dev --tag sanskrit-utils:dev .
+docker run -d -p 5000:5000 --name sanskrit-utils sanskrit-utils:dev
 
-- Production mode
-
-```sh
-$> docker build --tag sanskrit-utils .
-$> docker tag sanskrit-utils:latest sanskrit-utils:v1.0.0
-$> docker rmi sanskrit-utils:v1.0.0
-$> docker run -d -p 5000:80 \
+# production (nginx + uWSGI on :80)
+docker build --tag sanskrit-utils .
+docker run -d -p 5000:80 \
     -e MONGO_DB_PASSWORD= \
     -e MONGO_DB_HOST= \
     -e MONGO_DB_PORT= \
     --name sanskrit-utils sanskrit-utils
-$> docker rm -f sanskrit-utils
-
-$> docker image prune -a
-$> docker exec -it sanskrit-utils /bin/bash
-$> docker logs -f sanskrit-utils
-
-# after the CI build, deploy docker image
-$> docker run -d --restart on-failure -p 5000:80 --name sanskrit-utils docker.terabits.io/home/sanskrit-utils:latest
 ```
+
+#### Releasing
+
+```sh
+scripts/release.py patch      # vX.Y.Z -> vX.Y.Z+1
+scripts/release.py minor      # vX.Y.Z -> vX.Y+1.0
+scripts/release.py major      # vX.Y.Z -> vX+1.0.0
+scripts/release.py patch --dry-run
+```
+
+Pushing the tag triggers `.github/workflows/docker-publish.yml`, which pushes
+`ghcr.io/hareeshbabu82ns/sanskrit-utils:{X.Y.Z, X.Y, X, latest}` and creates a
+GitHub Release with generated notes. Pushes to `master` publish `master` and
+`sha-<short>` images; pull requests only build.
 
 #### Converting Dictionaries
 

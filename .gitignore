@@ -11,6 +11,14 @@ build/
 dist/
 venv
 .venv
+.venv/.requirements.sha
 
+# Local config / secrets
+.env
 vault.pass
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Local dictionary source data (sqlite files used by loaders)
 tmp/
