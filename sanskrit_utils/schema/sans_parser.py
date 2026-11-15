@@ -6,7 +6,7 @@ GraphQL arguments into its arguments and its SLP1 results into `schemeTo`.
 from functools import wraps
 
 from ariadne import ObjectType
-from graphql import GraphQLError
+from graphql import FieldNode, FragmentSpreadNode, GraphQLError, InlineFragmentNode
 
 from sanskrit_utils import parser_service as service
 from sanskrit_utils.schema import query
@@ -14,12 +14,30 @@ from sanskrit_utils.schema.Sanscript import SanscriptScheme
 
 parseType = ObjectType("Parse")
 parseItemType = ObjectType("ParseItem")
+splitGraphType = ObjectType("SplitGraph")
 
 
 def _scheme(value, default=None):
     """sanscript scheme name of a SanscriptScheme argument (None -> default)."""
     value = value or default
     return value.value if value is not None else None
+
+
+def _selects(info, name):
+    """Whether the field being resolved has `name` among its sub-fields."""
+    def walk(selection_set):
+        for selection in selection_set.selections if selection_set else ():
+            if isinstance(selection, FieldNode):
+                if selection.name.value == name:
+                    return True
+            elif isinstance(selection, FragmentSpreadNode):
+                if walk(info.fragments[selection.name.value].selection_set):
+                    return True
+            elif isinstance(selection, InlineFragmentNode):
+                if walk(selection.selection_set):
+                    return True
+        return False
+    return any(walk(node.selection_set) for node in info.field_nodes)
 
 
 def parser_field(name, bindable=query):
@@ -87,15 +105,28 @@ def res_q_presegmented(_, info, text, schemeFrom=None, schemeTo=None, strictIO=F
 
 @parser_field("parse")
 def res_q_parse(_, info, text, schemeFrom=None, schemeTo=None, strictIO=False, limit=10,
-                preSegmented=False, parseLimit=2, minCostOnly=False):
+                preSegmented=False, parseLimit=2, minCostOnly=False, unknownRootsTransitive=False):
     return service.parse(
         text, _scheme(schemeFrom, SanscriptScheme.DEVANAGARI), _scheme(schemeTo, SanscriptScheme.SLP1),
         strict=bool(strictIO), limit=limit, pre_segmented=bool(preSegmented),
-        parse_limit=parseLimit, min_cost_only=bool(minCostOnly))
+        parse_limit=parseLimit, min_cost_only=bool(minCostOnly),
+        unknown_roots_transitive=bool(unknownRootsTransitive))
 
 
 # `Parse` and `ParseItem` values are service.SplitAnalysis / service.ParseResult
 # objects; fields without a resolver here are read as attributes.
+
+@parser_field("analysisSplitDot", parseType)
+def res_parse_analysis_split_dot(split, info):
+    return split  # a `SplitGraph` is the split itself; see its `graph` below
+
+
+@parser_field("graph", splitGraphType)
+def res_split_graph_graph(split, info):
+    # Rows are merged down to what the query can tell apart: without
+    # `predecessor` there is nothing to distinguish two rows by their head.
+    return split.relations(by_head=_selects(info, 'predecessor'))
+
 
 @parser_field("splitDot", parseType)
 def res_parse_split_dot(split, info, scheme=None):

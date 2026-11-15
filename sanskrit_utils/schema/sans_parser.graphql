@@ -78,8 +78,10 @@ extend type Query {
   output keep a final `s`/`r` instead of visarga. In both modes anusvara
   before a stop is read as the class nasal (`శుక్లాంబర` = `SuklAmbara`).
 
-  Analysing a split is only done if `status`, `analysis` or one of the DOT
-  fields is selected.
+  A split is only analysed if `status`, `analysis`, `parseDots` or
+  `parseDotURLs` is selected. `splitDot`, `splitDotURL` and `analysisSplitDot`
+  need the possible relations between the words but not the search for
+  analyses, so on their own they are quick even for a long sentence.
   """
   parse(
     text: String!
@@ -94,11 +96,20 @@ extend type Query {
     parseLimit: Int = 2
     "Per split, only return the analyses that tie for the lowest cost"
     minCostOnly: Boolean = false
+    """
+    Whether a verb can take an object (`karma`) is looked up in the dhatupatha
+    by the root `tags` gives it. About a quarter of those roots are not found
+    there (`stu`, `praS`, `mokz`); such a verb is taken to be intransitive, so
+    a sentence that gives it an object has no analysis. Set this to let those
+    verbs take an object. More sentences are analysed that way, and so are
+    more splits that are not what the text means.
+    """
+    unknownRootsTransitive: Boolean = false
   ): [Parse!]!
 
   """
-  Entries of the dhatupatha for a verbal root, given bare (`gam`) or as taught
-  with its markers (`gamx~`).
+  Entries of the dhatupatha for a verbal root, given bare (`gam`), as taught
+  with its markers (`gamx~`), or the way `tags` names it (`DyA` for `DyE`).
   """
   dhatus(
     dhatu: String!
@@ -158,9 +169,15 @@ type Parse {
   "Analyses of this split, lowest cost first"
   analysis: [ParseItem!]!
   """
-  Graphviz DOT of every relation that was considered between the words of
-  this split, with one node per possible reading of a word. Empty if the
-  split was not analysed. Text is in `schemeTo` unless `scheme` is given.
+  What `splitDot` draws, in the form of an `analysis` entry: every relation
+  that is possible between the words of this split. Available when `analysis`
+  is empty (`NO_PARSE`, `TIMEOUT`) as well as when it is not.
+  """
+  analysisSplitDot: SplitGraph!
+  """
+  Graphviz DOT of every relation that is possible between the words of this
+  split, with one node per possible reading of a word. Empty only if a word
+  of the split has no tags. Text is in `schemeTo` unless `scheme` is given.
   """
   splitDot(scheme: SanscriptScheme): String!
   "Link that renders `splitDot` as an image"
@@ -189,12 +206,31 @@ type ParseItem {
   conll: String!
 }
 
+"""
+The possible relations between the words of a split. Unlike an analysis this
+is not a tree: a word has a row for each relation it could be in, so it
+usually appears several times.
+"""
+type SplitGraph {
+  """
+  One row for each way a word could relate to another, in sentence order of
+  `node`. Rows whose `node` has the same `index`, `pada` and `root` and the
+  same `sambandha` are one row, and its `tags` are those of all the readings
+  merged. If `predecessor` is selected, rows are also kept apart by the word
+  depended on (its `index`, `pada` and `root`; its `tags` are merged the same
+  way); if it is not, there is one row per word, root and relation. A word,
+  or a root of it, that nothing could govern has a row with a null
+  `sambandha`.
+  """
+  graph: [ParseGraph!]!
+}
+
 type ParseGraph {
-  "The word and the reading of it that this analysis uses"
+  "A word and one reading of it (in an analysis: the reading the analysis uses)"
   node: ParseTag!
-  "The word that `node` depends on; null for the root of the tree"
+  "The word that `node` depends on; null if nothing governs it"
   predecessor: ParseTag
-  "How `node` relates to `predecessor`; null for the root of the tree"
+  "How `node` relates to `predecessor`; null if nothing governs it"
   sambandha: String
 }
 

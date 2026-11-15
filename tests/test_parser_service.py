@@ -156,8 +156,26 @@ def test_the_whole_query_has_a_budget_too(service):
     started = time.monotonic()
     assert [r.status for r in results] == ['TIMEOUT'] * 4
     assert time.monotonic() - started < 3
-    # the later splits were never started
-    assert results[-1].split_dot() == '' and results[-1].split_dot_url() == ''
+    # the later splits were never searched, but their possible relations are still given
+    assert results[-1]._analysed[0] is results[-1]._unsearched
+    assert results[-1].split_dot().startswith('digraph {') and results[-1].relations()
+
+
+def test_relations_do_not_start_the_search(service, monkeypatch):
+    """splitDot and analysisSplitDot on their own stay quick for a sentence the search cannot finish."""
+    searched = []
+    original = service.VakyaGraph.get_parses_dc
+    monkeypatch.setattr(service.VakyaGraph, 'get_parses_dc',
+                        lambda self: searched.append(1) or original(self))
+    (result,) = service.parse(LONG_SENTENCE, SLP1, SLP1, limit=1,
+                              budget=service.ParseBudget(per_split=0.3, total=0.3))
+    started = time.monotonic()
+    rows, dot = result.relations(), result.split_dot()
+    assert rows and '->' in dot
+    assert not searched and time.monotonic() - started < 1
+    # asking for the analyses afterwards does search, and the relations stay the same
+    assert result.status == 'TIMEOUT' and searched
+    assert result.relations() == rows and result.split_dot() == dot
 
 
 def test_a_short_sentence_is_not_affected_by_the_budget(service):
@@ -176,6 +194,61 @@ def test_a_word_without_tags_gives_no_parse_instead_of_an_error(service):
     out = service._Output(SLP1, True)
     result = service.SplitAnalysis(['rAmas', 'xyzzyq'], out, service.ParseBudget())
     assert result.status == 'NO_PARSE' and result.analysis == [] and result.split_dot() == ''
+
+
+# --- dhatupatha lookup -------------------------------------------------------
+
+@pytest.mark.parametrize('root, found_as, takes_object', [
+    ('gam', ['gam'], True),
+    ('sTA', ['sTA'], False),
+    ('DyA', ['DyE'], True),          # the lexicon's name for a root in -ai
+    ('mlA', ['mlE'], False),
+    ('SA', ['SE', 'So'], True),      # ... or in -o: both are candidates
+    ('stu', [], False),              # not in the dhatupatha: no object unless asked
+])
+def test_dhatupatha_finds_roots_by_the_lexicon_name(service, root, found_as, takes_object):
+    assert [e['DAtuH'] for e in service.dhatupatha._get_dhatus(root)] == found_as
+    assert service.dhatupatha.is_sakarmaka(root) is takes_object
+
+
+def test_dhatupatha_unknown_roots_transitive_is_scoped(service):
+    patha = service.dhatupatha
+    with patha.unknown_roots_transitive(True):
+        assert patha.is_sakarmaka('stu') and patha.is_sakarmaka('zzz')
+        assert not patha.is_sakarmaka('sTA')         # a root that is found keeps its own answer
+        with patha.unknown_roots_transitive(False):
+            assert not patha.is_sakarmaka('stu')
+        assert patha.is_sakarmaka('stu')
+    assert not patha.is_sakarmaka('stu')
+
+
+def test_dhatupatha_setting_does_not_cross_threads(service):
+    """One request asking for it must not switch it on for another."""
+    seen = []
+    with service.dhatupatha.unknown_roots_transitive(True):
+        t = threading.Thread(target=lambda: seen.append(service.dhatupatha.is_sakarmaka('stu')))
+        t.start()
+        t.join()
+    assert seen == [False]
+
+
+def test_relations_can_leave_the_head_out(service):
+    (result,) = service.parse('devadattaH grAmaM gacCati', SLP1, SLP1, limit=1)
+    by_head, by_word = result.relations(), result.relations(by_head=False)
+    assert len(by_word) < len(by_head)
+    assert all(r['predecessor'] is None for r in by_word)
+    assert {(r['node']['pada'], r['node']['root'], r['sambandha']) for r in by_head} == \
+           {(r['node']['pada'], r['node']['root'], r['sambandha']) for r in by_word}
+
+
+def test_dhatupatha_double_object_roots(service):
+    assert service.dhatupatha.is_dvikarmaka('nI')
+    assert not service.dhatupatha.is_dvikarmaka('gam') and not service.dhatupatha.is_dvikarmaka('stu')
+
+
+def test_the_parser_uses_this_dhatupatha(service):
+    from sanskrit_parser.parser import datastructures
+    assert datastructures.dw is service.dhatupatha
 
 
 def test_dot_escapes_quotes_and_backslashes(service):

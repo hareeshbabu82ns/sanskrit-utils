@@ -176,13 +176,191 @@ def test_parse_strict_output_keeps_s(gql):
         assert result['analysis'][0]['graph'][0]['node']['pada'] == form
 
 
+NO_ANALYSIS = 'aham gfham gacCAmi tatra ca Bojanam karomi'   # the parser cannot connect these
+
+
 def test_parse_split_without_analysis_says_so(gql):
-    data = gql('{ parse(text: "శుక్లాంబరధరం విష్ణుం శశివర్ణం చతుర్భుజమ్", schemeFrom: TELUGU, limit: 2) '
-               '{ split status analysis { cost } parseDots parseDotURLs } }')
-    second = data['parse'][1]
-    assert second['split'] == ['SuklAmbaraDaram', 'vizRum', 'SaSiva', 'fRam', 'caturBujam']
-    assert second == {'split': second['split'], 'status': 'NO_PARSE', 'analysis': [],
-                      'parseDots': [], 'parseDotURLs': []}
+    data = gql('{ parse(text: "%s", %s, preSegmented: true) '
+               '{ split status analysis { cost } parseDots parseDotURLs } }' % (NO_ANALYSIS, SLP))
+    assert data['parse'] == [{'split': NO_ANALYSIS.split(), 'status': 'NO_PARSE', 'analysis': [],
+                              'parseDots': [], 'parseDotURLs': []}]
+
+
+# --- a verb whose root the dhatupatha lists under another name ---------------
+
+def test_parse_gives_dhyai_its_object(gql):
+    """The lexicon calls the root DyA, the dhatupatha DyE; upstream then finds no object."""
+    data = gql('{ parse(text: "విష్ణుం ధ్యాయేత్ సర్వవిఘ్నోపశాంతయే", schemeFrom: TELUGU, schemeTo: TELUGU,'
+               ' strictIO: true, limit: 1) { split status analysis { graph { node { pada root } sambandha'
+               ' predecessor { pada } } } } }')
+    (result,) = data['parse']
+    assert result['split'] == ['విష్ణుమ్', 'ధ్యాయేత్', 'సర్వ', 'విఘ్న', 'ఉపశాన్తయే']
+    assert result['status'] == 'OK'
+    relations = {g['node']['pada']: (g['sambandha'], g['predecessor'] and g['predecessor']['pada'])
+                 for g in result['analysis'][0]['graph']}
+    assert relations == {
+        'విష్ణుమ్': ('కర్మ', 'ధ్యాయేత్'), 'ధ్యాయేత్': (None, None), 'సర్వ': ('సమస్త', 'విఘ్న'),
+        'విఘ్న': ('సమస్త', 'ఉపశాన్తయే'), 'ఉపశాన్తయే': ('సమ్ప్రదానమ్', 'ధ్యాయేత్'),
+    }
+
+
+def test_parse_unknown_roots_are_intransitive_unless_asked(gql):
+    """stu is not in the dhatupatha, so by default nothing can be its object."""
+    q = ('query($t: Boolean) { parse(text: "rAmaH devam stOti", %s, preSegmented: true, parseLimit: 1,'
+         ' unknownRootsTransitive: $t) { status analysis { graph { node { pada root } sambandha } } } }' % SLP)
+    assert gql(q, t=False)['parse'] == [{'status': 'NO_PARSE', 'analysis': []}]
+    assert gql(q)['parse'] == gql(q, t=False)['parse'] == gql(q, t=None)['parse']
+    (result,) = gql(q, t=True)['parse']
+    assert result['status'] == 'OK'
+    assert [(g['node']['pada'], g['node']['root'], g['sambandha']) for g in result['analysis'][0]['graph']] == [
+        ('rAmaH', 'rAma', 'kartA'), ('devam', 'deva', 'karma'), ('stOti', 'stu', None)]
+    # the setting belongs to the one query: the next one is back to the default
+    assert gql(q)['parse'][0]['status'] == 'NO_PARSE'
+
+
+def test_parse_unknown_roots_setting_shows_in_the_relations(gql):
+    q = ('{ parse(text: "rAmaH devam stOti", %s, preSegmented: true, unknownRootsTransitive: %s)'
+         ' { analysisSplitDot { graph { sambandha predecessor { root } } } } }')
+    def by_stu(flag):
+        rows = gql(q % (SLP, flag))['parse'][0]['analysisSplitDot']['graph']
+        return {r['sambandha'] for r in rows if r['predecessor'] and r['predecessor']['root'] == 'stu'}
+    assert by_stu('false') == {'kartA'}
+    assert by_stu('true') == {'kartA', 'karma'}
+
+
+def test_parse_unknown_roots_setting_leaves_known_roots_alone(gql):
+    q = '{ parse(text: "%s", limit: 2, parseLimit: 20, unknownRootsTransitive: %s) { split status analysis { cost conll } } }'
+    assert gql(q % (SENTENCE, 'true')) == gql(q % (SENTENCE, 'false'))
+
+
+def test_parse_still_gives_an_intransitive_verb_no_object(gql):
+    data = gql('{ parse(text: "rAmaH vanam tizWati", %s, preSegmented: true) '
+               '{ analysisSplitDot { graph { sambandha predecessor { root tags } } } } }' % SLP)
+    rows = data['parse'][0]['analysisSplitDot']['graph']
+    by_the_verb = {r['sambandha'] for r in rows
+                   if r['predecessor'] and r['predecessor']['root'].split('#')[0] == 'sTA'}
+    assert by_the_verb == {'kartA'}
+    # tizWati read as the participle tizWat may take one: upstream does not look that up
+    assert 'karma' in {r['sambandha'] for r in rows if r['predecessor'] and r['predecessor']['root'] == 'tizWat'}
+
+
+# --- analysisSplitDot --------------------------------------------------------
+
+NODE_ROWS = 'analysisSplitDot { graph { node { index pada root tags } sambandha } }'
+HEAD_ROWS = 'analysisSplitDot { graph { node { index pada root tags } sambandha predecessor { index pada root tags } } }'
+
+
+def test_analysis_split_dot_has_one_row_per_word_root_and_relation(gql):
+    data = gql('{ parse(text: "%s", limit: 1) { %s } }' % (SENTENCE, NODE_ROWS))
+    assert data['parse'][0]['analysisSplitDot']['graph'] == [
+        {'node': {'index': 0, 'pada': 'devadattaH', 'root': 'devadatta',
+                  'tags': ['ekavacanam', 'praTamAviBaktiH', 'puMlliNgam']}, 'sambandha': 'kartA'},
+        # grAmam is neuter or masculine as an object: one row, both genders
+        {'node': {'index': 1, 'pada': 'grAmam', 'root': 'grAma',
+                  'tags': ['dvitIyAviBaktiH', 'ekavacanam', 'napuMsakaliNgam', 'puMlliNgam']}, 'sambandha': 'karma'},
+        {'node': {'index': 1, 'pada': 'grAmam', 'root': 'grAma',
+                  'tags': ['ekavacanam', 'napuMsakaliNgam', 'praTamAviBaktiH']}, 'sambandha': 'kartA'},
+        # nothing governs the verb; its participle reading has another root, so another row
+        {'node': {'index': 2, 'pada': 'gacCati', 'root': 'gacCat',
+                  'tags': ['Satf', 'ekavacanam', 'kartari', 'kfdantaH', 'napuMsakaliNgam', 'parasmEpadam',
+                           'prATamikaH', 'puMlliNgam', 'saptamIviBaktiH']}, 'sambandha': None},
+        {'node': {'index': 2, 'pada': 'gacCati', 'root': 'gam',
+                  'tags': ['ekavacanam', 'kartari', 'law', 'parasmEpadam', 'prATamikaH', 'praTamapuruzaH']},
+         'sambandha': None},
+    ]
+
+
+def _keys(rows, head=False):
+    return [(r['node']['index'], r['node']['pada'], r['node']['root'], r['sambandha'])
+            + ((r['predecessor'] and (r['predecessor']['index'], r['predecessor']['pada'], r['predecessor']['root']),)
+               if head else ())
+            for r in rows]
+
+
+def test_analysis_split_dot_has_no_duplicate_rows(gql):
+    long_text = 'శుక్లాంబరధరం విష్ణుం శశివర్ణం చతుర్భుజమ్ ప్రసన్నవదనం ధ్యాయేత్ సర్వవిఘ్నోపశాంతయే'
+    q = '{ parse(text: "%s", schemeFrom: TELUGU, strictIO: true, limit: 2) { %s splitDot } }'
+    for result in gql(q % (long_text, NODE_ROWS))['parse']:
+        rows = result['analysisSplitDot']['graph']
+        assert len(_keys(rows)) == len(set(_keys(rows))) < result['splitDot'].count('->')
+        assert all(len(r['node']['tags']) == len(set(r['node']['tags'])) for r in rows)
+        assert [r['node']['index'] for r in rows] == sorted(r['node']['index'] for r in rows)
+    for result in gql(q % (long_text, HEAD_ROWS))['parse']:
+        rows = result['analysisSplitDot']['graph']
+        assert len(_keys(rows, head=True)) == len(set(_keys(rows, head=True)))
+
+
+def test_analysis_split_dot_keeps_rows_apart_by_head_when_the_head_is_asked_for(gql):
+    without = gql('{ parse(text: "%s", limit: 1) { %s } }' % (SENTENCE, NODE_ROWS))['parse'][0]['analysisSplitDot']['graph']
+    with_head = gql('{ parse(text: "%s", limit: 1) { %s } }' % (SENTENCE, HEAD_ROWS))['parse'][0]['analysisSplitDot']['graph']
+    # grAmam can be the object of gacCati read as a verb or as a participle
+    objects = [r for r in with_head if r['sambandha'] == 'karma']
+    assert [(r['node']['pada'], r['predecessor']['root']) for r in objects] == [('grAmam', 'gacCat'), ('grAmam', 'gam')]
+    assert len([r for r in without if r['sambandha'] == 'karma']) == 1
+    # the same rows otherwise: dropping the head and merging gives the shorter list
+    assert sorted(set(_keys(with_head))) == sorted(_keys(without))
+    assert all(r['predecessor'] is None for r in with_head if r['sambandha'] is None)
+    assert all(r['predecessor'] for r in with_head if r['sambandha'])
+
+
+def test_analysis_split_dot_sees_predecessor_through_fragments_and_aliases(gql):
+    plain = gql('{ parse(text: "%s", limit: 1) { %s } }' % (SENTENCE, HEAD_ROWS))['parse'][0]['analysisSplitDot']['graph']
+    spread = gql('query { parse(text: "%s", limit: 1) { analysisSplitDot { graph { ...Row } } } } '
+                 'fragment Row on ParseGraph { node { index pada root tags } sambandha ...Head } '
+                 'fragment Head on ParseGraph { predecessor { index pada root tags } }' % SENTENCE)
+    inline = gql('{ parse(text: "%s", limit: 1) { analysisSplitDot { rows: graph { node { index pada root tags }'
+                 ' sambandha ... on ParseGraph { head: predecessor { index pada root tags } } } } } }' % SENTENCE)
+    assert spread['parse'][0]['analysisSplitDot']['graph'] == plain
+    renamed = [{'node': r['node'], 'sambandha': r['sambandha'], 'predecessor': r['head']}
+               for r in inline['parse'][0]['analysisSplitDot']['rows']]
+    assert renamed == plain
+
+
+def test_analysis_split_dot_covers_every_relation_of_an_analysis(gql):
+    data = gql('{ parse(text: "%s", limit: 1, parseLimit: 5) { %s analysis { graph { node { index pada root tags }'
+               ' sambandha predecessor { index pada root tags } } } } }' % (SENTENCE, HEAD_ROWS))
+    (result,) = data['parse']
+    rows = {key: r for key, r in zip(_keys(result['analysisSplitDot']['graph'], head=True),
+                                    result['analysisSplitDot']['graph'])}
+    for analysis in result['analysis']:
+        for key, relation in zip(_keys(analysis['graph'], head=True), analysis['graph']):
+            merged = rows[key]
+            assert set(relation['node']['tags']) <= set(merged['node']['tags'])
+            if relation['predecessor']:
+                assert set(relation['predecessor']['tags']) <= set(merged['predecessor']['tags'])
+
+
+def test_analysis_split_dot_is_there_when_no_analysis_is(gql):
+    """The case it is for: `analysis` is empty but the relations are known."""
+    data = gql('{ parse(text: "%s", %s, preSegmented: true) { status analysis { cost } %s } }'
+               % (NO_ANALYSIS, SLP, HEAD_ROWS))
+    (result,) = data['parse']
+    assert result['status'] == 'NO_PARSE' and result['analysis'] == []
+    rows = result['analysisSplitDot']['graph']
+    assert {r['node']['pada'] for r in rows} >= {'aham', 'gfham', 'gacCAmi', 'Bojanam', 'karomi'}
+    assert {'node': {'index': 1, 'pada': 'gfham', 'root': 'gfha',
+                     'tags': ['dvitIyAviBaktiH', 'ekavacanam', 'napuMsakaliNgam', 'puMlliNgam']},
+            'sambandha': 'karma',
+            'predecessor': {'index': 2, 'pada': 'gacCAmi', 'root': 'gam',
+                            'tags': ['ekavacanam', 'kartari', 'law', 'parasmEpadam', 'prATamikaH', 'uttamapuruzaH']},
+            } in rows
+
+
+def test_analysis_split_dot_follows_scheme_to(gql):
+    data = gql('{ parse(text: "%s", schemeTo: TELUGU, limit: 1) { analysisSplitDot { graph { node { pada }'
+               ' sambandha } } } }' % SENTENCE)
+    rows = data['parse'][0]['analysisSplitDot']['graph']
+    assert {'node': {'pada': 'గ్రామమ్'}, 'sambandha': 'కర్మ'} in rows
+
+
+def test_analysis_split_dot_is_repeatable(gql):
+    q = '{ parse(text: "%s", limit: 2) { %s } }' % (SENTENCE, HEAD_ROWS)
+    assert gql(q) == gql(q)
+
+
+def test_analysis_split_dot_of_words_that_cannot_relate_is_empty(gql):
+    data = gql('{ parse(text: "vanAt gfhe", %s, preSegmented: true) { status analysisSplitDot { graph { sambandha } } } }' % SLP)
+    assert data['parse'] == [{'status': 'NO_PARSE', 'analysisSplitDot': {'graph': []}}]
 
 
 def test_parse_of_unknown_text_is_empty(gql):

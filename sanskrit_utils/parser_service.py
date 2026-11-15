@@ -22,17 +22,20 @@ Why this does not simply use ``sanskrit_parser.Parser``:
   each split on objects of its own, and under a time budget, since a long
   sentence can be slow on its own account.
 """
+import contextlib
+import contextvars
 import os
 import re
 import threading
 import time
-from functools import cached_property, lru_cache
+from functools import cached_property
 from urllib.parse import urlencode
 
 from indic_transliteration import sanscript
 from sanskrit_parser.base.maheshvara_sutra import MaheshvaraSutras
 from sanskrit_parser.base.sanskrit_base import (SanskritImmutableString,
                                                 SanskritObject)
+from sanskrit_parser.parser import datastructures as _vakya
 from sanskrit_parser.parser.datastructures import (
     VakyaGraph, k_shortest_paths_dag_optimized)
 from sanskrit_parser.parser.sandhi_analyzer import LexicalSandhiAnalyzer
@@ -51,8 +54,8 @@ SPLIT_POOL_MIN = 50
 SPLIT_POOL_MAX = 2000
 # Seconds the vakya analysis of one split may take, and of all splits of one
 # `parse` query together.
-PARSE_SPLIT_TIMEOUT = float(os.environ.get('PARSE_SPLIT_TIMEOUT', '5'))
-PARSE_TOTAL_TIMEOUT = float(os.environ.get('PARSE_TOTAL_TIMEOUT', '15'))
+PARSE_SPLIT_TIMEOUT = float(os.environ.get('PARSE_SPLIT_TIMEOUT', '10'))
+PARSE_TOTAL_TIMEOUT = float(os.environ.get('PARSE_TOTAL_TIMEOUT', '30'))
 
 # Loading the lexicons takes a few seconds; do it once, at import.
 analyzer = LexicalSandhiAnalyzer()
@@ -310,6 +313,69 @@ def tags(text, scheme, strict=False, lexicon='COMBINED'):
 
 
 # --------------------------------------------------------------------------
+# Dhatupatha
+# --------------------------------------------------------------------------
+
+class Dhatupatha(DhatuWrapper):
+    """The dhatupatha, found by the names the lexicon gives to roots.
+
+    The parser asks it whether a verb can take an object, using the root the
+    lexicon named for that verb. Upstream's wrapper matches the name exactly
+    and answers "no" for a root it does not find - and it does not find more
+    than a quarter of the lexicon's verb roots. The lexicon writes roots in
+    -ai and -o with -A (`DyA` for the dhatupatha's `DyE`, `SA` for `So`);
+    others are spelt differently or are not in this dhatupatha at all (`stu`,
+    `praS`, `mokz`). Such a verb is never given an object, so a sentence
+    built on it has no analysis. Here an -A root that is not found is looked
+    up as -E and -o. A root that is still not found stays intransitive, as
+    upstream has it, unless the caller asks for the opposite with
+    `unknown_roots_transitive()` - which is what upstream itself assumes for
+    participles and gerunds.
+    """
+
+    # Per call, not per instance: the one instance serves every request.
+    _unknown_transitive = contextvars.ContextVar('unknown_roots_transitive', default=False)
+
+    def __init__(self):
+        super().__init__()
+        self._by_name, self._by_taught_form = {}, {}
+        for entry in self.db.all():
+            self._by_name.setdefault(entry['DAtuH'], []).append(entry)
+            self._by_taught_form.setdefault(entry['mUlaDAtuH'], []).append(entry)
+
+    def _get_dhatus(self, d):
+        found = self._by_name.get(d, [])
+        if not found and d and d.endswith('A'):
+            found = self._by_name.get(d[:-1] + 'E', []) + self._by_name.get(d[:-1] + 'o', [])
+        return found
+
+    def is_sakarmaka(self, d):
+        if not self._get_dhatus(d):
+            return self._unknown_transitive.get()
+        return super().is_sakarmaka(d)
+
+    @contextlib.contextmanager
+    def unknown_roots_transitive(self, transitive):
+        """Within the block, say whether a root that is not found may take an object."""
+        token = self._unknown_transitive.set(bool(transitive))
+        try:
+            yield
+        finally:
+            self._unknown_transitive.reset(token)
+
+    def find(self, name):
+        """Entries for a root given by name or as taught with its markers."""
+        found = list(self._get_dhatus(name))
+        found.extend(e for e in self._by_taught_form.get(name, []) if e not in found)
+        return found
+
+
+dhatupatha = Dhatupatha()
+# VakyaGraph asks its module's `dw` when it adds karaka relations.
+_vakya.dw = dhatupatha
+
+
+# --------------------------------------------------------------------------
 # Vakya analysis (dependency parse of a split)
 # --------------------------------------------------------------------------
 
@@ -322,7 +388,9 @@ class _BudgetedVakyaGraph(VakyaGraph):
 
     The search calls on_the_fly() for every candidate it considers, which
     makes it the place to look at the clock. Giving up leaves the graph of
-    possible relations (self.G) intact and the parse list empty.
+    possible relations (self.G) intact and the parse list empty. With a
+    `deadline` of None the search is not run at all: building the relations
+    takes milliseconds, the search can take any amount of time.
     """
 
     def __init__(self, path, deadline, **kwargs):
@@ -336,6 +404,8 @@ class _BudgetedVakyaGraph(VakyaGraph):
         return super().on_the_fly(p)
 
     def get_parses_dc(self):
+        if self._deadline is None:
+            return set()
         try:
             return super().get_parses_dc()
         except _ParseTimeout:
@@ -403,6 +473,28 @@ class _Output:
         tags_ = ', '.join(self.term(t, scheme) for t in tagset)
         return f'{self.pada(node.pada.canonical(), scheme)} [{self.term(root, scheme)}, {{{tags_}}}]'
 
+    def tag(self, node):
+        """One reading of a word, as a `ParseTag`."""
+        root, tagset = _node_tag(node)
+        return self.word(node.index, node.pada.canonical(), root, tagset)
+
+    def word(self, index, pada, root, tagset):
+        """A `ParseTag` from SLP1 parts."""
+        return {
+            'index': index,
+            'pada': self.pada(pada),
+            'root': self.term(root),
+            'tags': [self.term(t) for t in tagset],
+        }
+
+    def relation(self, node, head=None, label=None):
+        """`node` and how it relates to `head`, as a `ParseGraph`."""
+        return {
+            'node': self.tag(node),
+            'predecessor': self.tag(head) if head is not None else None,
+            'sambandha': self.term(label) if label is not None else None,
+        }
+
 
 def _node_tag(node):
     root, tagset = node.getMorphologicalTags()
@@ -411,7 +503,8 @@ def _node_tag(node):
 
 def _node_key(node):
     """Sort key that is the same on every run (str(node) prints a set)."""
-    return (node.index, node.pada.canonical(), *_node_tag(node))
+    root, tagset = _node_tag(node)
+    return (node.index, node.pada.canonical(), root, tuple(tagset))
 
 
 class ParseResult:
@@ -433,29 +526,16 @@ class ParseResult:
             else:
                 yield node, None, None
 
-    def _tag(self, node):
-        root, tagset = _node_tag(node)
-        return {
-            'index': node.index,
-            'pada': self._out.pada(node.pada.canonical()),
-            'root': self._out.term(root),
-            'tags': [self._out.term(t) for t in tagset],
-        }
-
     @cached_property
     def graph(self):
-        return [{
-            'node': self._tag(node),
-            'predecessor': self._tag(head) if head is not None else None,
-            'sambandha': self._out.term(label) if label is not None else None,
-        } for node, head, label in self._rows()]
+        return [self._out.relation(node, head, label) for node, head, label in self._rows()]
 
     @cached_property
     def conll(self):
         """CoNLL-style rows: ID, FORM, LEMMA(_), ROOT, TAGS, HEAD, DEPREL."""
         lines = []
         for node, head, label in self._rows():
-            t = self._tag(node)
+            t = self._out.tag(node)
             lines.append('\t'.join([
                 str(node.index + 1), t['pada'], '_', t['root'], '|'.join(t['tags']) or '_',
                 str(head.index + 1) if head is not None else '0',
@@ -476,42 +556,68 @@ class SplitAnalysis:
     """One sandhi split of a sentence and, on demand, its vakya analyses.
 
     Nothing is analysed until a field that needs it is read, so a query that
-    only asks for `split` costs no more than `splits` does.
+    only asks for `split` costs no more than `splits` does. There are two
+    steps, and a field triggers only the one it needs: finding the relations
+    that are possible between the words (quick), and searching them for the
+    trees that connect every word (can run into the time budget).
     """
 
-    def __init__(self, padas, out, budget, parse_limit=2, min_cost_only=False):
+    def __init__(self, padas, out, budget, parse_limit=2, min_cost_only=False,
+                 unknown_roots_transitive=False):
         self._padas = padas
         self._out = out
         self._budget = budget
         self._parse_limit = _check_limit(parse_limit, 'parseLimit')
         self._min_cost_only = min_cost_only
+        self._unknown_roots_transitive = unknown_roots_transitive
 
     @property
     def split(self):
         return [self._out.pada(p) for p in self._padas]
 
     @cached_property
-    def _analysed(self):
-        """(graph, status); graph is None if the analysis was never started."""
+    def _path(self):
+        """The words as tagged objects; None if the lexicon has no tags for one."""
         path = []
         for pada in self._padas:
             obj = SanskritObject(pada, encoding=SLP1, strict_io=True, replace_ending_visarga=None)
             found = analyzer.getMorphologicalTags(obj)
             if not found:
-                return None, 'NO_PARSE'
+                return None
             obj.setMorphologicalTags(found)
             path.append(obj)
+        return path
+
+    def _graph(self, deadline):
+        # the relations are found while the graph is built, which is when
+        # the dhatupatha is asked whether a verb takes an object
+        with dhatupatha.unknown_roots_transitive(self._unknown_roots_transitive):
+            return _BudgetedVakyaGraph(self._path, deadline, max_parse_dc=5, fast_merge=True)
+
+    @cached_property
+    def _unsearched(self):
+        """Graph of the possible relations, without the search for analyses."""
+        return self._graph(None) if self._path is not None else None
+
+    @cached_property
+    def _analysed(self):
+        """(graph, status) after the search for analyses."""
+        if self._path is None:
+            return None, 'NO_PARSE'
         deadline = self._budget.deadline()
         if deadline is None:
-            return None, 'TIMEOUT'
-        graph = _BudgetedVakyaGraph(path, deadline, max_parse_dc=5, fast_merge=True)
+            return self._unsearched, 'TIMEOUT'
+        graph = self._graph(deadline)
         if graph.timed_out:
             return graph, 'TIMEOUT'
         return graph, 'OK' if graph.parses else 'NO_PARSE'
 
     @property
-    def _vgraph(self):
-        return self._analysed[0]
+    def _relations(self):
+        """A graph to read the possible relations from; never starts a search."""
+        if '_analysed' in self.__dict__:
+            return self._analysed[0]
+        return self._unsearched
 
     @property
     def status(self):
@@ -520,7 +626,7 @@ class SplitAnalysis:
 
     @cached_property
     def analysis(self):
-        graph = self._vgraph
+        graph = self._analysed[0]
         if graph is None:
             return []
         # Upstream orders by cost only and leaves ties in set order, which
@@ -533,9 +639,42 @@ class SplitAnalysis:
             ranked = [r for r in ranked if r[1] == best]
         return [ParseResult(g, cost, self._out) for g, cost in ranked[:self._parse_limit]]
 
+    def relations(self, by_head=True):
+        """What `split_dot` draws, as `ParseGraph` rows.
+
+        One row for each way a word could relate to another: the word (its
+        position, form and root), the relation, and the word it would depend
+        on. Readings of a word that differ only in their tags are one row,
+        with the tags of all of them; the same goes for the word depended on.
+        A word, or a root of it, that nothing could govern has a row without
+        a relation. With `by_head` false the word depended on is left out, so
+        there is one row per word, root and relation.
+        """
+        graph = self._relations
+        if graph is None:
+            return []
+
+        def word(node):
+            return (node.index, node.pada.canonical(), _node_tag(node)[0])
+
+        merged = {}   # (word, relation, head word) -> (tags of the word, tags of the head)
+        for node in graph.G:
+            heads = {(head, label) for head, _, label in graph.G.in_edges(node, data='label')}
+            for head, label in heads or {(None, None)}:
+                key = (word(node), label or '', word(head) if by_head and head is not None else ())
+                tags_, head_tags = merged.setdefault(key, (set(), set()))
+                tags_.update(_node_tag(node)[1])
+                if head is not None:
+                    head_tags.update(_node_tag(head)[1])
+        return [{
+            'node': self._out.word(*node, sorted(tags_)),
+            'predecessor': self._out.word(*head, sorted(head_tags)) if head else None,
+            'sambandha': self._out.term(label) if label else None,
+        } for (node, label, head), (tags_, head_tags) in sorted(merged.items())]
+
     def split_dot(self, scheme=None):
-        """DOT of every relation the analysis considered (not one parse)."""
-        graph = self._vgraph
+        """DOT of every relation that is possible between the words (not one parse)."""
+        graph = self._relations
         if graph is None:
             return ''
         edges = [(u, v, self._out.term(label, scheme))
@@ -554,8 +693,12 @@ class SplitAnalysis:
 
 
 def parse(text, scheme_from, scheme_to, strict=False, limit=10, pre_segmented=False,
-          parse_limit=2, min_cost_only=False, budget=None):
-    """Sandhi-split `text` and return a SplitAnalysis for each split."""
+          parse_limit=2, min_cost_only=False, unknown_roots_transitive=False, budget=None):
+    """Sandhi-split `text` and return a SplitAnalysis for each split.
+
+    `unknown_roots_transitive` lets a verb whose root the dhatupatha does not
+    have take an object (see Dhatupatha).
+    """
     out = _Output(scheme_to, strict)
     if pre_segmented:
         _check_limit(limit)
@@ -563,11 +706,12 @@ def parse(text, scheme_from, scheme_to, strict=False, limit=10, pre_segmented=Fa
     else:
         splits = split(text, scheme_from, strict, limit)
     budget = budget or ParseBudget()
-    return [SplitAnalysis(padas, out, budget, parse_limit, min_cost_only) for padas in splits]
+    return [SplitAnalysis(padas, out, budget, parse_limit, min_cost_only, unknown_roots_transitive)
+            for padas in splits]
 
 
 # --------------------------------------------------------------------------
-# Dhatupatha, pratyaharas, metre
+# Dhatupatha lookup, pratyaharas, metre
 # --------------------------------------------------------------------------
 
 _DHATU_FIELDS = {
@@ -576,25 +720,18 @@ _DHATU_FIELDS = {
 }
 
 
-@lru_cache(maxsize=1)
-def _dhatu_index():
-    index = {}
-    for entry in DhatuWrapper().db.all():
-        for key in {entry['DAtuH'], entry['mUlaDAtuH']}:
-            index.setdefault(key, []).append(entry)
-    return index
-
-
 def dhatus(name, scheme):
-    """Dhatupatha entries for a root, given bare (`gam`) or with its markers (`gamx~`).
+    """Dhatupatha entries for a root.
 
-    Returns dicts of SLP1 strings plus the booleans `sakarmaka` / `dvikarmaka`.
+    The root may be given bare (`gam`), the way the lexicon names it (`DyA`
+    for `DyE`), or as taught with its markers (`gamx~`). Returns dicts of SLP1
+    strings plus the booleans `sakarmaka` / `dvikarmaka`.
     """
     key = to_slp1(name, scheme).strip()
     if not key:
         raise InputError('dhatu is empty')
     result = []
-    for entry in _dhatu_index().get(key, []):
+    for entry in dhatupatha.find(key):
         row = {field: entry.get(source, '') for field, source in _DHATU_FIELDS.items()}
         row['sakarmaka'] = entry['karmakatvaM'] in ('sakarmakaH', 'dvikarmakaH')
         row['dvikarmaka'] = entry['karmakatvaM'] == 'dvikarmakaH'

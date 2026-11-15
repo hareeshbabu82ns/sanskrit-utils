@@ -26,6 +26,12 @@ def test_dhatu_by_its_taught_form(gql):
     assert data['dhatus'] == [{'dhatu': 'gam'}]
 
 
+def test_dhatu_by_the_name_the_lexicon_uses(gql):
+    """`tags` reports the root of ध्यायेत् as DyA; the dhatupatha has it as DyE."""
+    data = gql('{ dhatus(dhatu: "DyA", %s) { dhatu artha sakarmaka } }' % SLP)
+    assert data['dhatus'] == [{'dhatu': 'DyE', 'artha': 'cintAyAm', 'sakarmaka': True}]
+
+
 def test_dhatu_transitivity_flags(gql):
     q = 'query($d: String!) { dhatus(dhatu: $d, %s) { sakarmaka dvikarmaka } }' % SLP
     assert {'sakarmaka': False, 'dvikarmaka': False} in gql(q, d='BU')['dhatus']

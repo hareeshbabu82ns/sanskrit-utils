@@ -276,6 +276,21 @@ In both modes anusvara before a stop is read as the class nasal
       dotURL
       conll
     }
+    analysisSplitDot {
+      graph {
+        node {
+          index
+          pada
+          root
+          tags
+        }
+        predecessor {
+          index
+          pada
+        }
+        sambandha
+      }
+    }
     splitDot
     splitDotURL
   }
@@ -285,16 +300,39 @@ In both modes anusvara before a stop is read as the class nasal
 `limit` caps the sandhi splits, `parseLimit` (default 2) the analyses per
 split, `minCostOnly` keeps only the cheapest analyses, and `preSegmented: true`
 analyses the text as it stands. `status` is `OK`, `NO_PARSE` (no analysis
-connects all the words) or `TIMEOUT`. Splits are only analysed when `status`,
-`analysis` or a DOT field is selected. DOT text follows `schemeTo`; pass
+connects all the words) or `TIMEOUT`. DOT text follows `schemeTo`; pass
 `scheme` to a DOT field to override it, e.g. `splitDotURL(scheme: IAST)`.
 
-Sentences of about ten words and more often cannot be analysed in reasonable
-time. `PARSE_SPLIT_TIMEOUT` (seconds per split, default 5) and
-`PARSE_TOTAL_TIMEOUT` (seconds per query, default 15) bound the work; such
-splits come back with `status: TIMEOUT`.
+Each split is worked on in two steps, and only as far as the selected fields
+need:
 
-- dhatupatha entries of a root
+1. Finding every relation that is possible between the words. This is quick.
+   `splitDot` draws the result and `analysisSplitDot` gives the same thing in
+   the shape of an `analysis` entry. It is not a tree: a word has a `graph`
+   row for each relation it could be in. Rows with the same `index`, `pada`,
+   `root` and `sambandha` are merged into one whose `tags` are those of all
+   the readings. If `predecessor` is selected, rows are also kept apart by
+   the word depended on. Use it when `analysis` comes back empty.
+2. Searching those relations for the trees that connect every word. `status`,
+   `analysis`, `parseDots` and `parseDotURLs` need this step. The time it
+   takes grows very fast with the length of the sentence: seconds for about
+   ten words, and often more than is reasonable beyond that.
+   `PARSE_SPLIT_TIMEOUT` (seconds per split, default 10) and
+   `PARSE_TOTAL_TIMEOUT` (seconds per query, default 30) bound it; a split
+   that runs out of time has `status: TIMEOUT` and an empty `analysis`.
+
+A long sentence can have thousands of analyses and the cheapest is not always
+the intended one; raise `parseLimit` to see more of them.
+
+Whether a verb can take an object is looked up in the dhatupatha by the root
+that `tags` reports. About a quarter of those roots are not found there
+(`stu`, `praS`, `mokz`); such a verb is treated as intransitive, so a sentence
+that gives it an object gets `NO_PARSE`. Pass `unknownRootsTransitive: true`
+to let those verbs take an object. More sentences are analysed that way, and
+so are more splits that are not what the text means.
+
+- dhatupatha entries of a root, by its name (`gam`), its taught form
+  (`gamx~`) or the name `tags` gives it (`DyA` for `DyE`)
 
 ```graphql
 {

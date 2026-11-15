@@ -349,6 +349,17 @@ def test_generator_data_is_packaged():
 
 # --- dhatupatha -------------------------------------------------------------
 
+@pytest.mark.xfail(strict=True, reason='upstream: a root the dhatupatha lists under another name '
+                                       '(DyA for DyE) counts as intransitive; see parser_service.Dhatupatha')
+def test_dhatu_wrapper_knows_the_roots_of_the_lexicon():
+    assert DhatuWrapper().is_sakarmaka('DyA')
+
+
+def test_dhatu_wrapper_takes_a_root_it_lacks_as_intransitive():
+    """As does parser_service.Dhatupatha, unless a query sets unknownRootsTransitive."""
+    assert not DhatuWrapper().is_sakarmaka('stu')
+
+
 def test_dhatu_wrapper():
     dhatus = DhatuWrapper()
     assert dhatus.is_sakarmaka('gam') and not dhatus.is_dvikarmaka('gam')
